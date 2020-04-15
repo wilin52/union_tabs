@@ -17,9 +17,9 @@ class TabBarOverScroll with ChangeNotifier {
 }
 
 class TabBarOverScrollStateProvider extends StatefulWidget {
-  final Widget child;
+  final WidgetBuilder builder;
 
-  TabBarOverScrollStateProvider({Key key, this.child}) : super(key: key);
+  TabBarOverScrollStateProvider({Key key, this.builder}) : super(key: key);
 
   @override
   _TabBarOverScrollStateProviderState createState() =>
@@ -41,7 +41,7 @@ class _TabBarOverScrollStateProviderState
   Widget build(BuildContext context) {
     return _OverScrollStateScope(
       overScroll: _overScroll,
-      child: widget.child,
+      child: widget.builder(context),
     );
   }
 

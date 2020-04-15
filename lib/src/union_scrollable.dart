@@ -11,12 +11,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
+import 'package:union_tabs/src/union_tabs_provider.dart';
 
 export 'package:flutter/physics.dart' show Tolerance;
 
 /// Signature used by [UnionScrollable] to build the viewport through which the
 /// scrollable content is displayed.
-typedef ViewportBuilder = Widget Function(BuildContext context, ViewportOffset position);
+typedef ViewportBuilder = Widget Function(
+    BuildContext context, ViewportOffset position);
 
 /// A widget that scrolls.
 ///
@@ -72,12 +74,12 @@ class UnionScrollable extends StatefulWidget {
     this.excludeFromSemantics = false,
     this.semanticChildCount,
     this.dragStartBehavior = DragStartBehavior.start,
-  }) : assert(axisDirection != null),
+  })  : assert(axisDirection != null),
         assert(dragStartBehavior != null),
         assert(viewportBuilder != null),
         assert(excludeFromSemantics != null),
         assert(semanticChildCount == null || semanticChildCount >= 0),
-        super (key: key);
+        super(key: key);
 
   /// The direction in which this widget scrolls.
   ///
@@ -218,19 +220,21 @@ class UnionScrollable extends StatefulWidget {
   /// UnionScrollableState scrollable = UnionScrollable.of(context);
   /// ```
   static UnionScrollableState of(BuildContext context) {
-    final _UnionScrollableScope widget = context.dependOnInheritedWidgetOfExactType<_UnionScrollableScope>();
+    final _UnionScrollableScope widget =
+        context.dependOnInheritedWidgetOfExactType<_UnionScrollableScope>();
     return widget?.scrollable;
   }
 
   /// Scrolls the scrollables that enclose the given context so as to make the
   /// given context visible.
   static Future<void> ensureVisible(
-      BuildContext context, {
-        double alignment = 0.0,
-        Duration duration = Duration.zero,
-        Curve curve = Curves.ease,
-        ScrollPositionAlignmentPolicy alignmentPolicy = ScrollPositionAlignmentPolicy.explicit,
-      }) {
+    BuildContext context, {
+    double alignment = 0.0,
+    Duration duration = Duration.zero,
+    Curve curve = Curves.ease,
+    ScrollPositionAlignmentPolicy alignmentPolicy =
+        ScrollPositionAlignmentPolicy.explicit,
+  }) {
     final List<Future<void>> futures = <Future<void>>[];
 
     UnionScrollableState scrollable = UnionScrollable.of(context);
@@ -248,8 +252,7 @@ class UnionScrollable extends StatefulWidget {
 
     if (futures.isEmpty || duration == Duration.zero)
       return Future<void>.value();
-    if (futures.length == 1)
-      return futures.single;
+    if (futures.length == 1) return futures.single;
     return Future.wait<void>(futures).then<void>((List<void> _) => null);
   }
 }
@@ -262,7 +265,7 @@ class _UnionScrollableScope extends InheritedWidget {
     @required this.scrollable,
     @required this.position,
     @required Widget child,
-  }) : assert(scrollable != null),
+  })  : assert(scrollable != null),
         assert(child != null),
         super(key: key, child: child);
 
@@ -285,7 +288,8 @@ class _UnionScrollableScope extends InheritedWidget {
 ///
 /// This class is not intended to be subclassed. To specialize the behavior of a
 /// [UnionScrollable], provide it with a [ScrollPhysics].
-class UnionScrollableState extends State<UnionScrollable> with TickerProviderStateMixin
+class UnionScrollableState extends State<UnionScrollable>
+    with TickerProviderStateMixin
     implements ScrollContext {
   /// The manager for this [UnionScrollable] widget's viewport position.
   ///
@@ -300,13 +304,15 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
 
   ScrollBehavior _configuration;
   ScrollPhysics _physics;
+  bool _overscroll = false;
+  TabBarOverScroll _tabBarOverScroll;
+  UnionHorizontalDragGestureRecognizer horizontalDragGestureRecognizer;
 
   // Only call this from places that will definitely trigger a rebuild.
   void _updatePosition() {
     _configuration = ScrollConfiguration.of(context);
     _physics = _configuration.getScrollPhysics(context);
-    if (widget.physics != null)
-      _physics = widget.physics.applyTo(_physics);
+    if (widget.physics != null) _physics = widget.physics.applyTo(_physics);
     final ScrollController controller = widget.controller;
     final ScrollPosition oldPosition = position;
     if (oldPosition != null) {
@@ -317,24 +323,39 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
       scheduleMicrotask(oldPosition.dispose);
     }
 
-    _position = controller?.createScrollPosition(_physics, this, oldPosition)
-        ?? ScrollPositionWithSingleContext(physics: _physics, context: this, oldPosition: oldPosition);
+    _position = controller?.createScrollPosition(_physics, this, oldPosition) ??
+        ScrollPositionWithSingleContext(
+            physics: _physics, context: this, oldPosition: oldPosition);
     assert(position != null);
     controller?.attach(position);
+  }
+
+  @override
+  void initState() {
+    horizontalDragGestureRecognizer = UnionHorizontalDragGestureRecognizer(() {
+      return _overscroll;
+    });
+    super.initState();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _updatePosition();
+    _tabBarOverScroll = TabBarOverScrollStateProvider.of(context);
+    _tabBarOverScroll?.removeListener(_overScroll);
+    _tabBarOverScroll?.addListener(_overScroll);
+  }
+
+  void _overScroll() {
+    _overscroll = _tabBarOverScroll.overScroll;
   }
 
   bool _shouldUpdatePosition(UnionScrollable oldWidget) {
     ScrollPhysics newPhysics = widget.physics;
     ScrollPhysics oldPhysics = oldWidget.physics;
     do {
-      if (newPhysics?.runtimeType != oldPhysics?.runtimeType)
-        return true;
+      if (newPhysics?.runtimeType != oldPhysics?.runtimeType) return true;
       newPhysics = newPhysics?.parent;
       oldPhysics = oldPhysics?.parent;
     } while (newPhysics != null || oldPhysics != null);
@@ -351,17 +372,16 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
       widget.controller?.attach(position);
     }
 
-    if (_shouldUpdatePosition(oldWidget))
-      _updatePosition();
+    if (_shouldUpdatePosition(oldWidget)) _updatePosition();
   }
 
   @override
   void dispose() {
+    _tabBarOverScroll?.removeListener(_overScroll);
     widget.controller?.detach(position);
     position.dispose();
     super.dispose();
   }
-
 
   // SEMANTICS
 
@@ -374,14 +394,15 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
       _gestureDetectorKey.currentState.replaceSemanticsActions(actions);
   }
 
-
   // GESTURE RECOGNITION AND POINTER IGNORING
 
-  final GlobalKey<RawGestureDetectorState> _gestureDetectorKey = GlobalKey<RawGestureDetectorState>();
+  final GlobalKey<RawGestureDetectorState> _gestureDetectorKey =
+      GlobalKey<RawGestureDetectorState>();
   final GlobalKey _ignorePointerKey = GlobalKey();
 
   // This field is set during layout, and then reused until the next time it is set.
-  Map<Type, GestureRecognizerFactory> _gestureRecognizers = const <Type, GestureRecognizerFactory>{};
+  Map<Type, GestureRecognizerFactory> _gestureRecognizers =
+      const <Type, GestureRecognizerFactory>{};
   bool _shouldIgnorePointer = false;
 
   bool _lastCanDrag;
@@ -390,17 +411,18 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
   @override
   @protected
   void setCanDrag(bool canDrag) {
-    if (canDrag == _lastCanDrag && (!canDrag || widget.axis == _lastAxisDirection))
-      return;
+    if (canDrag == _lastCanDrag &&
+        (!canDrag || widget.axis == _lastAxisDirection)) return;
     if (!canDrag) {
       _gestureRecognizers = const <Type, GestureRecognizerFactory>{};
     } else {
       switch (widget.axis) {
         case Axis.vertical:
           _gestureRecognizers = <Type, GestureRecognizerFactory>{
-            VerticalDragGestureRecognizer: GestureRecognizerFactoryWithHandlers<VerticalDragGestureRecognizer>(
-                  () => VerticalDragGestureRecognizer(),
-                  (VerticalDragGestureRecognizer instance) {
+            VerticalDragGestureRecognizer: GestureRecognizerFactoryWithHandlers<
+                VerticalDragGestureRecognizer>(
+              () => VerticalDragGestureRecognizer(),
+              (VerticalDragGestureRecognizer instance) {
                 instance
                   ..onDown = _handleDragDown
                   ..onStart = _handleDragStart
@@ -417,9 +439,11 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
           break;
         case Axis.horizontal:
           _gestureRecognizers = <Type, GestureRecognizerFactory>{
-            HorizontalDragGestureRecognizer: GestureRecognizerFactoryWithHandlers<HorizontalDragGestureRecognizer>(
-                  () => HorizontalDragGestureRecognizer(),
-                  (HorizontalDragGestureRecognizer instance) {
+            UnionHorizontalDragGestureRecognizer:
+                GestureRecognizerFactoryWithHandlers<
+                    UnionHorizontalDragGestureRecognizer>(
+              () => horizontalDragGestureRecognizer,
+              (UnionHorizontalDragGestureRecognizer instance) {
                 instance
                   ..onDown = _handleDragDown
                   ..onStart = _handleDragStart
@@ -439,7 +463,8 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
     _lastCanDrag = canDrag;
     _lastAxisDirection = widget.axis;
     if (_gestureDetectorKey.currentState != null)
-      _gestureDetectorKey.currentState.replaceGestureRecognizers(_gestureRecognizers);
+      _gestureDetectorKey.currentState
+          .replaceGestureRecognizers(_gestureRecognizers);
   }
 
   @override
@@ -448,11 +473,11 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
   @override
   @protected
   void setIgnorePointer(bool value) {
-    if (_shouldIgnorePointer == value)
-      return;
+    if (_shouldIgnorePointer == value) return;
     _shouldIgnorePointer = value;
     if (_ignorePointerKey.currentContext != null) {
-      final RenderIgnorePointer renderBox = _ignorePointerKey.currentContext.findRenderObject();
+      final RenderIgnorePointer renderBox =
+          _ignorePointerKey.currentContext.findRenderObject();
       renderBox.ignoring = _shouldIgnorePointer;
     }
   }
@@ -533,11 +558,13 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
   }
 
   void _receivedPointerSignal(PointerSignalEvent event) {
-    if (event is PointerScrollEvent && position != null) {
-      final double targetScrollOffset = _targetScrollOffsetForPointerScroll(event);
+    if (event is PointerScrollEvent && position != null && !_overscroll) {
+      final double targetScrollOffset =
+          _targetScrollOffsetForPointerScroll(event);
       // Only express interest in the event if it would actually result in a scroll.
       if (targetScrollOffset != position.pixels) {
-        GestureBinding.instance.pointerSignalResolver.register(event, _handlePointerScroll);
+        GestureBinding.instance.pointerSignalResolver
+            .register(event, _handlePointerScroll);
       }
     }
   }
@@ -547,7 +574,8 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
     if (_physics != null && !_physics.shouldAcceptUserOffset(position)) {
       return;
     }
-    final double targetScrollOffset = _targetScrollOffsetForPointerScroll(event);
+    final double targetScrollOffset =
+        _targetScrollOffsetForPointerScroll(event);
     if (targetScrollOffset != position.pixels) {
       position.jumpTo(targetScrollOffset);
     }
@@ -595,12 +623,14 @@ class UnionScrollableState extends State<UnionScrollable> with TickerProviderSta
         key: _scrollSemanticsKey,
         child: result,
         position: position,
-        allowImplicitScrolling: widget?.physics?.allowImplicitScrolling ?? _physics.allowImplicitScrolling,
+        allowImplicitScrolling: widget?.physics?.allowImplicitScrolling ??
+            _physics.allowImplicitScrolling,
         semanticChildCount: widget.semanticChildCount,
       );
     }
 
-    return _configuration.buildViewportChrome(context, result, widget.axisDirection);
+    return _configuration.buildViewportChrome(
+        context, result, widget.axisDirection);
   }
 
   @override
@@ -631,7 +661,7 @@ class _ScrollSemantics extends SingleChildRenderObjectWidget {
     @required this.allowImplicitScrolling,
     @required this.semanticChildCount,
     Widget child,
-  }) : assert(position != null),
+  })  : assert(position != null),
         assert(semanticChildCount == null || semanticChildCount >= 0),
         super(key: key, child: child);
 
@@ -649,7 +679,8 @@ class _ScrollSemantics extends SingleChildRenderObjectWidget {
   }
 
   @override
-  void updateRenderObject(BuildContext context, _RenderScrollSemantics renderObject) {
+  void updateRenderObject(
+      BuildContext context, _RenderScrollSemantics renderObject) {
     renderObject
       ..allowImplicitScrolling = allowImplicitScrolling
       ..position = position
@@ -663,7 +694,7 @@ class _RenderScrollSemantics extends RenderProxyBox {
     @required bool allowImplicitScrolling,
     @required int semanticChildCount,
     RenderBox child,
-  }) : _position = position,
+  })  : _position = position,
         _allowImplicitScrolling = allowImplicitScrolling,
         _semanticChildCount = semanticChildCount,
         assert(position != null),
@@ -674,10 +705,10 @@ class _RenderScrollSemantics extends RenderProxyBox {
   /// Whether this render object is excluded from the semantic tree.
   ScrollPosition get position => _position;
   ScrollPosition _position;
+
   set position(ScrollPosition value) {
     assert(value != null);
-    if (value == _position)
-      return;
+    if (value == _position) return;
     _position.removeListener(markNeedsSemanticsUpdate);
     _position = value;
     _position.addListener(markNeedsSemanticsUpdate);
@@ -687,18 +718,18 @@ class _RenderScrollSemantics extends RenderProxyBox {
   /// Whether this node can be scrolled implicitly.
   bool get allowImplicitScrolling => _allowImplicitScrolling;
   bool _allowImplicitScrolling;
+
   set allowImplicitScrolling(bool value) {
-    if (value == _allowImplicitScrolling)
-      return;
+    if (value == _allowImplicitScrolling) return;
     _allowImplicitScrolling = value;
     markNeedsSemanticsUpdate();
   }
 
   int get semanticChildCount => _semanticChildCount;
   int _semanticChildCount;
+
   set semanticChildCount(int value) {
-    if (value == semanticChildCount)
-      return;
+    if (value == semanticChildCount) return;
     _semanticChildCount = value;
     markNeedsSemanticsUpdate();
   }
@@ -720,8 +751,10 @@ class _RenderScrollSemantics extends RenderProxyBox {
   SemanticsNode _innerNode;
 
   @override
-  void assembleSemanticsNode(SemanticsNode node, SemanticsConfiguration config, Iterable<SemanticsNode> children) {
-    if (children.isEmpty || !children.first.isTagged(RenderViewport.useTwoPaneSemantics)) {
+  void assembleSemanticsNode(SemanticsNode node, SemanticsConfiguration config,
+      Iterable<SemanticsNode> children) {
+    if (children.isEmpty ||
+        !children.first.isTagged(RenderViewport.useTwoPaneSemantics)) {
       super.assembleSemanticsNode(node, config, children);
       return;
     }
@@ -746,12 +779,32 @@ class _RenderScrollSemantics extends RenderProxyBox {
     }
     config.scrollIndex = firstVisibleIndex;
     node.updateWith(config: null, childrenInInversePaintOrder: excluded);
-    _innerNode.updateWith(config: config, childrenInInversePaintOrder: included);
+    _innerNode.updateWith(
+        config: config, childrenInInversePaintOrder: included);
   }
 
   @override
   void clearSemantics() {
     super.clearSemantics();
     _innerNode = null;
+  }
+}
+
+typedef GiveUpPointer = bool Function();
+
+class UnionHorizontalDragGestureRecognizer
+    extends HorizontalDragGestureRecognizer {
+  final GiveUpPointer giveUpPointer;
+
+  UnionHorizontalDragGestureRecognizer(this.giveUpPointer);
+
+  @override
+  void handleEvent(PointerEvent event) {
+    super.handleEvent(event);
+    if (!(event is PointerUpEvent || event is PointerCancelEvent)) {
+      if (giveUpPointer?.call() ?? false) {
+        stopTrackingPointer(event.pointer);
+      }
+    }
   }
 }

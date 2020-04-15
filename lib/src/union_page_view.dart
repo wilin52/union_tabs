@@ -16,7 +16,8 @@ class UnionPageController extends ScrollController {
     this.initialPage = 0,
     this.keepPage = true,
     this.viewportFraction = 1.0,
-  })  : assert(initialPage != null),
+  })
+      : assert(initialPage != null),
         assert(keepPage != null),
         assert(viewportFraction != null),
         assert(viewportFraction > 0.0);
@@ -66,13 +67,13 @@ class UnionPageController extends ScrollController {
   /// prior to accessing [page].
   double get page {
     assert(
-      positions.isNotEmpty,
-      'UnionPageController.page cannot be accessed before a UnionPageView is built with it.',
+    positions.isNotEmpty,
+    'UnionPageController.page cannot be accessed before a UnionPageView is built with it.',
     );
     assert(
-      positions.length == 1,
-      'The page property cannot be read when multiple PageViews are attached to '
-      'the same UnionPageController.',
+    positions.length == 1,
+    'The page property cannot be read when multiple PageViews are attached to '
+        'the same UnionPageController.',
     );
     final _UnionPagePosition position = this.position;
     return position.page;
@@ -84,8 +85,7 @@ class UnionPageController extends ScrollController {
   /// The returned [Future] resolves when the animation completes.
   ///
   /// The `duration` and `curve` arguments must not be null.
-  Future<void> animateToPage(
-    int page, {
+  Future<void> animateToPage(int page, {
     @required Duration duration,
     @required Curve curve,
   }) {
@@ -157,19 +157,20 @@ class _UnionPagePosition extends ScrollPositionWithSingleContext
     bool keepPage = true,
     double viewportFraction = 1.0,
     ScrollPosition oldPosition,
-  })  : assert(initialPage != null),
+  })
+      : assert(initialPage != null),
         assert(keepPage != null),
         assert(viewportFraction != null),
         assert(viewportFraction > 0.0),
         _viewportFraction = viewportFraction,
         _pageToUseOnStartup = initialPage.toDouble(),
         super(
-          physics: physics,
-          context: context,
-          initialPixels: null,
-          keepScrollOffset: keepPage,
-          oldPosition: oldPosition,
-        );
+        physics: physics,
+        context: context,
+        initialPixels: null,
+        keepScrollOffset: keepPage,
+        oldPosition: oldPosition,
+      );
 
   final int initialPage;
   double _pageToUseOnStartup;
@@ -211,13 +212,13 @@ class _UnionPagePosition extends ScrollPositionWithSingleContext
   @override
   double get page {
     assert(
-      pixels == null || (minScrollExtent != null && maxScrollExtent != null),
-      'Page value is only available after content dimensions are established.',
+    pixels == null || (minScrollExtent != null && maxScrollExtent != null),
+    'Page value is only available after content dimensions are established.',
     );
     return pixels == null
         ? null
         : getPageFromPixels(
-            pixels.clamp(minScrollExtent, maxScrollExtent), viewportDimension);
+        pixels.clamp(minScrollExtent, maxScrollExtent), viewportDimension);
   }
 
   @override
@@ -309,8 +310,8 @@ class UnionPageScrollPhysics extends ScrollPhysics {
     return page * position.viewportDimension;
   }
 
-  double _getTargetPixels(
-      ScrollPosition position, Tolerance tolerance, double velocity) {
+  double _getTargetPixels(ScrollPosition position, Tolerance tolerance,
+      double velocity) {
     double page = _getPage(position);
     if (velocity < -tolerance.velocity)
       page -= 0.5;
@@ -319,8 +320,8 @@ class UnionPageScrollPhysics extends ScrollPhysics {
   }
 
   @override
-  Simulation createBallisticSimulation(
-      ScrollMetrics position, double velocity) {
+  Simulation createBallisticSimulation(ScrollMetrics position,
+      double velocity) {
     // If we're out of range and not headed back in range, defer to the parent
     // ballistics, which should put us back in range at a page boundary.
     if ((velocity <= 0.0 && position.pixels <= position.minScrollExtent) ||
@@ -387,7 +388,8 @@ class UnionPageView extends StatefulWidget {
     this.onPageChanged,
     List<Widget> children = const <Widget>[],
     this.dragStartBehavior = DragStartBehavior.start,
-  })  : controller = controller ?? _defaultPageController,
+  })
+      : controller = controller ?? _defaultPageController,
         childrenDelegate = SliverChildListDelegate(children),
         super(key: key);
 
@@ -418,9 +420,10 @@ class UnionPageView extends StatefulWidget {
     @required IndexedWidgetBuilder itemBuilder,
     int itemCount,
     this.dragStartBehavior = DragStartBehavior.start,
-  })  : controller = controller ?? _defaultPageController,
+  })
+      : controller = controller ?? _defaultPageController,
         childrenDelegate =
-            SliverChildBuilderDelegate(itemBuilder, childCount: itemCount),
+        SliverChildBuilderDelegate(itemBuilder, childCount: itemCount),
         super(key: key);
 
   /// Creates a scrollable list that works page by page with a custom child
@@ -513,7 +516,8 @@ class UnionPageView extends StatefulWidget {
     this.onPageChanged,
     @required this.childrenDelegate,
     this.dragStartBehavior = DragStartBehavior.start,
-  })  : assert(childrenDelegate != null),
+  })
+      : assert(childrenDelegate != null),
         controller = controller ?? _defaultPageController,
         super(key: key);
 
@@ -587,7 +591,7 @@ class _UnionPageViewState extends State<UnionPageView> {
         assert(debugCheckHasDirectionality(context));
         final TextDirection textDirection = Directionality.of(context);
         final AxisDirection axisDirection =
-            textDirectionToAxisDirection(textDirection);
+        textDirectionToAxisDirection(textDirection);
         return widget.reverse
             ? flipAxisDirection(axisDirection)
             : axisDirection;
@@ -604,43 +608,47 @@ class _UnionPageViewState extends State<UnionPageView> {
         ? _kPagePhysics.applyTo(widget.physics)
         : widget.physics;
 
-    return NotificationListener<ScrollNotification>(
-      onNotification: (ScrollNotification notification) {
-        if (notification.depth == 0 &&
-            widget.onPageChanged != null &&
-            notification is ScrollUpdateNotification) {
-          final PageMetrics metrics = notification.metrics;
-          final int currentPage = metrics.page.round();
-          if (currentPage != _lastReportedPage) {
-            _lastReportedPage = currentPage;
-            widget.onPageChanged(currentPage);
-          }
-        } else if(notification is ScrollEndNotification) {
-
-        }
-        return false;
-      },
-      child: TabBarOverScrollStateProvider(
-        child: UnionScrollable(
-          dragStartBehavior: widget.dragStartBehavior,
-          axisDirection: axisDirection,
-          controller: widget.controller,
-          physics: physics,
-          viewportBuilder: (BuildContext context, ViewportOffset position) {
-            return Viewport(
-              cacheExtent: 0.0,
-              axisDirection: axisDirection,
-              offset: position,
-              slivers: <Widget>[
-                SliverFillViewport(
-                  viewportFraction: widget.controller.viewportFraction,
-                  delegate: widget.childrenDelegate,
-                ),
-              ],
-            );
+    return TabBarOverScrollStateProvider(
+      builder: (context) {
+        return NotificationListener<ScrollNotification>(
+          onNotification: (ScrollNotification notification) {
+            if (notification.depth == 0 &&
+                widget.onPageChanged != null &&
+                notification is ScrollUpdateNotification) {
+              final PageMetrics metrics = notification.metrics;
+              final int currentPage = metrics.page.round();
+              if (currentPage != _lastReportedPage) {
+                _lastReportedPage = currentPage;
+                widget.onPageChanged(currentPage);
+              }
+            } else if (notification is OverscrollNotification) {
+              TabBarOverScrollStateProvider.of(notification.context)?.setOverScroll(true);
+            } else if (notification is ScrollEndNotification) {
+              TabBarOverScrollStateProvider.of(notification.context)?.setOverScroll(false);
+            }
+            return false;
           },
-        ),
-      ),
+          child: UnionScrollable(
+            dragStartBehavior: widget.dragStartBehavior,
+            axisDirection: axisDirection,
+            controller: widget.controller,
+            physics: physics,
+            viewportBuilder: (BuildContext context, ViewportOffset position) {
+              return Viewport(
+                cacheExtent: 0.0,
+                axisDirection: axisDirection,
+                offset: position,
+                slivers: <Widget>[
+                  SliverFillViewport(
+                    viewportFraction: widget.controller.viewportFraction,
+                    delegate: widget.childrenDelegate,
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
