@@ -45,18 +45,6 @@ class UnionOuterGestureDelegate {
     } else if (notification is UnionScrollEndNotification) {
       _drag?.cancel();
       _drag = null;
-
-      MediaQueryData data = MediaQuery.of(context);
-
-      /// 划到最右边
-      /// return if reach the right boundary.
-      if ((tabController.length - 1) * data.size.width ==
-          notification.metrics.pixels) {
-        return true;
-      }
-
-      tabController.animateTo(
-          tabController.offset.clamp(0, tabController.length - 1).round());
     } else if (notification is UnionScrollUpdateNotification) {
       if (_drag != null && notification.dragDetails != null) {
         /// update the viewpager's position

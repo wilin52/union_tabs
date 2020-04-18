@@ -25,8 +25,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
-  List<String> tabsText = ["一", "二"];
-  List<String> secondTabsText = ["one", "two", "three", "four", "five"];
+  List<String> tabsText = ["一", "二", "三"];
+  List<String> secondTabsText = ["one", "two", "three"];
   TabController _controller;
   TabController _childController;
 
@@ -72,6 +72,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       ],
     );
     tabContent.add(child);
+    tabContent.add(Center(child: Text(tabsText[2])));
     return tabContent;
   }
 

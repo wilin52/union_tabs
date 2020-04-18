@@ -252,7 +252,7 @@ abstract class UnionDragGestureRecognizer extends OneSequenceGestureRecognizer {
     assert(_state != _DragState.ready);
 
     /// 如果不处理手势
-    if (giveUpPointerEvaluator?.call() ?? false) {
+    if ((event is PointerMoveEvent) && (giveUpPointerEvaluator?.call() ?? false)) {
 //      resolve(GestureDisposition.rejected);
 //      rejectGesture(event.pointer);
 //      _giveUpPointer(event.pointer, reject: true);
