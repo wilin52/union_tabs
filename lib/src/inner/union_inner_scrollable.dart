@@ -349,7 +349,8 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
       return;
     }
 
-    final double overscroll = position.applyBoundaryConditions(offset);
+    final double overscroll =
+        position.physics.applyBoundaryConditions(position, offset);
 
     if (overscroll == 0.0) {
       return;

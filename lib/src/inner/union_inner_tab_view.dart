@@ -1,4 +1,3 @@
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -26,7 +25,7 @@ class UnionInnerTabBarView extends StatefulWidget {
     this.controller,
     this.physics,
     this.dragStartBehavior = DragStartBehavior.start,
-  }) : assert(children != null),
+  })  : assert(children != null),
         assert(dragStartBehavior != null),
         super(key: key);
 
@@ -60,7 +59,8 @@ class UnionInnerTabBarView extends StatefulWidget {
   _UnionInnerTabBarViewState createState() => _UnionInnerTabBarViewState();
 }
 
-final PageScrollPhysics _kTabBarViewPhysics = const PageScrollPhysics().applyTo(const ClampingScrollPhysics());
+final PageScrollPhysics _kTabBarViewPhysics =
+    const PageScrollPhysics().applyTo(const ClampingScrollPhysics());
 
 class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
   TabController _controller;
@@ -76,22 +76,20 @@ class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
   bool get _controllerIsValid => _controller?.animation != null;
 
   void _updateTabController() {
-    final TabController newController = widget.controller ?? DefaultTabController.of(context);
+    final TabController newController =
+        widget.controller ?? DefaultTabController.of(context);
     assert(() {
       if (newController == null) {
-        throw FlutterError(
-            'No TabController for ${widget.runtimeType}.\n'
-                'When creating a ${widget.runtimeType}, you must either provide an explicit '
-                'TabController using the "controller" property, or you must ensure that there '
-                'is a DefaultTabController above the ${widget.runtimeType}.\n'
-                'In this case, there was neither an explicit controller nor a default controller.'
-        );
+        throw FlutterError('No TabController for ${widget.runtimeType}.\n'
+            'When creating a ${widget.runtimeType}, you must either provide an explicit '
+            'TabController using the "controller" property, or you must ensure that there '
+            'is a DefaultTabController above the ${widget.runtimeType}.\n'
+            'In this case, there was neither an explicit controller nor a default controller.');
       }
       return true;
     }());
 
-    if (newController == _controller)
-      return;
+    if (newController == _controller) return;
 
     if (_controllerIsValid)
       _controller.animation.removeListener(_handleTabControllerAnimationTick);
@@ -117,8 +115,7 @@ class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
   @override
   void didUpdateWidget(UnionInnerTabBarView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.controller != oldWidget.controller)
-      _updateTabController();
+    if (widget.controller != oldWidget.controller) _updateTabController();
     if (widget.children != oldWidget.children && _warpUnderwayCount == 0)
       _updateChildren();
   }
@@ -148,20 +145,19 @@ class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
   }
 
   Future<void> _warpToCurrentIndex() async {
-    if (!mounted)
-      return Future<void>.value();
+    if (!mounted) return Future<void>.value();
 
     if (_pageController.page == _currentIndex.toDouble())
       return Future<void>.value();
 
     final int previousIndex = _controller.previousIndex;
     if ((_currentIndex - previousIndex).abs() == 1)
-      return _pageController.animateToPage(_currentIndex, duration: kTabScrollDuration, curve: Curves.ease);
+      return _pageController.animateToPage(_currentIndex,
+          duration: kTabScrollDuration, curve: Curves.ease);
 
     assert((_currentIndex - previousIndex).abs() > 1);
-    final int initialPage = _currentIndex > previousIndex
-        ? _currentIndex - 1
-        : _currentIndex + 1;
+    final int initialPage =
+        _currentIndex > previousIndex ? _currentIndex - 1 : _currentIndex + 1;
     final List<Widget> originalChildren = _childrenWithKey;
     setState(() {
       _warpUnderwayCount += 1;
@@ -173,9 +169,9 @@ class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
     });
     _pageController.jumpToPage(initialPage);
 
-    await _pageController.animateToPage(_currentIndex, duration: kTabScrollDuration, curve: Curves.ease);
-    if (!mounted)
-      return Future<void>.value();
+    await _pageController.animateToPage(_currentIndex,
+        duration: kTabScrollDuration, curve: Curves.ease);
+    if (!mounted) return Future<void>.value();
     setState(() {
       _warpUnderwayCount -= 1;
       if (widget.children != _children) {
@@ -188,19 +184,19 @@ class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
 
   // Called when the PageView scrolls
   bool _handleScrollNotification(ScrollNotification notification) {
-    if (_warpUnderwayCount > 0)
-      return false;
+    if (_warpUnderwayCount > 0) return false;
 
-    if (notification.depth != 0)
-      return false;
+    if (notification.depth != 0) return false;
 
     _warpUnderwayCount += 1;
-    if (notification is ScrollUpdateNotification && !_controller.indexIsChanging) {
+    if (notification is ScrollUpdateNotification &&
+        !_controller.indexIsChanging) {
       if ((_pageController.page - _controller.index).abs() > 1.0) {
         _controller.index = _pageController.page.floor();
-        _currentIndex =_controller.index;
+        _currentIndex = _controller.index;
       }
-      _controller.offset = (_pageController.page - _controller.index).clamp(-1.0, 1.0);
+      _controller.offset =
+          (_pageController.page - _controller.index).clamp(-1.0, 1.0);
     } else if (notification is ScrollEndNotification) {
       _controller.index = _pageController.page.round();
       _currentIndex = _controller.index;
@@ -216,8 +212,7 @@ class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
       if (_controller.length != widget.children.length) {
         throw FlutterError(
             'Controller\'s length property (${_controller.length}) does not match the \n'
-                'number of tabs (${widget.children.length}) present in TabBar\'s tabs property.'
-        );
+            'number of tabs (${widget.children.length}) present in TabBar\'s tabs property.');
       }
       return true;
     }());
@@ -226,7 +221,9 @@ class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
       child: UnionInnerPageView(
         dragStartBehavior: widget.dragStartBehavior,
         controller: _pageController,
-        physics: widget.physics == null ? _kTabBarViewPhysics : _kTabBarViewPhysics.applyTo(widget.physics),
+        physics: widget.physics == null
+            ? _kTabBarViewPhysics
+            : _kTabBarViewPhysics.applyTo(widget.physics),
         children: _childrenWithKey,
       ),
     );

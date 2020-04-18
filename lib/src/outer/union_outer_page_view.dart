@@ -5,8 +5,8 @@ import 'package:flutter/widgets.dart';
 import 'union_outer_scroll_position.dart';
 import 'union_outer_sliver.dart';
 
-
-final UnionOuterPageController _defaultPageController = UnionOuterPageController();
+final UnionOuterPageController _defaultPageController =
+    UnionOuterPageController();
 const PageScrollPhysics _kPagePhysics = PageScrollPhysics();
 
 /// usage like [PageView]

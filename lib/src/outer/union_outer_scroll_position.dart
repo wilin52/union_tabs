@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'dart:math' as math;
 
-class UnionOuterScrollPosition extends ScrollPositionWithSingleContext implements PageMetrics {
+class UnionOuterScrollPosition extends ScrollPositionWithSingleContext
+    implements PageMetrics {
   UnionOuterScrollPosition({
     ScrollPhysics physics,
     ScrollContext context,
@@ -10,19 +11,19 @@ class UnionOuterScrollPosition extends ScrollPositionWithSingleContext implement
     bool keepPage = true,
     double viewportFraction = 1.0,
     ScrollPosition oldPosition,
-  }) : assert(initialPage != null),
+  })  : assert(initialPage != null),
         assert(keepPage != null),
         assert(viewportFraction != null),
         assert(viewportFraction > 0.0),
         _viewportFraction = viewportFraction,
         _pageToUseOnStartup = initialPage.toDouble(),
         super(
-        physics: physics,
-        context: context,
-        initialPixels: null,
-        keepScrollOffset: keepPage,
-        oldPosition: oldPosition,
-      );
+          physics: physics,
+          context: context,
+          initialPixels: null,
+          keepScrollOffset: keepPage,
+          oldPosition: oldPosition,
+        );
 
   double _overscrollOffset = -1;
   bool _overscroll = false;
@@ -64,7 +65,6 @@ class UnionOuterScrollPosition extends ScrollPositionWithSingleContext implement
     return super.setPixels(newPixels);
   }
 
-
   @override
   void dispose() {
     // resolved, https://github.com/flutter/flutter/issues/32054,
@@ -82,17 +82,17 @@ class UnionOuterScrollPosition extends ScrollPositionWithSingleContext implement
   @override
   double get viewportFraction => _viewportFraction;
   double _viewportFraction;
+
   set viewportFraction(double value) {
-    if (_viewportFraction == value)
-      return;
+    if (_viewportFraction == value) return;
     final double oldPage = page;
     _viewportFraction = value;
-    if (oldPage != null)
-      forcePixels(getPixelsFromPage(oldPage));
+    if (oldPage != null) forcePixels(getPixelsFromPage(oldPage));
   }
 
   double getPageFromPixels(double pixels, double viewportDimension) {
-    final double actual = math.max(0.0, pixels) / math.max(1.0, viewportDimension * viewportFraction);
+    final double actual = math.max(0.0, pixels) /
+        math.max(1.0, viewportDimension * viewportFraction);
     final double round = actual.roundToDouble();
     if ((actual - round).abs() < precisionErrorTolerance) {
       return round;
@@ -107,23 +107,27 @@ class UnionOuterScrollPosition extends ScrollPositionWithSingleContext implement
   @override
   double get page {
     assert(
-    pixels == null || (minScrollExtent != null && maxScrollExtent != null),
-    'Page value is only available after content dimensions are established.',
+      pixels == null || (minScrollExtent != null && maxScrollExtent != null),
+      'Page value is only available after content dimensions are established.',
     );
-    return pixels == null ? null : getPageFromPixels(pixels.clamp(minScrollExtent, maxScrollExtent), viewportDimension);
+    return pixels == null
+        ? null
+        : getPageFromPixels(
+            pixels.clamp(minScrollExtent, maxScrollExtent), viewportDimension);
   }
 
   @override
   void saveScrollOffset() {
-    PageStorage.of(context.storageContext)?.writeState(context.storageContext, getPageFromPixels(pixels, viewportDimension));
+    PageStorage.of(context.storageContext)?.writeState(
+        context.storageContext, getPageFromPixels(pixels, viewportDimension));
   }
 
   @override
   void restoreScrollOffset() {
     if (pixels == null) {
-      final double value = PageStorage.of(context.storageContext)?.readState(context.storageContext);
-      if (value != null)
-        _pageToUseOnStartup = value;
+      final double value = PageStorage.of(context.storageContext)
+          ?.readState(context.storageContext);
+      if (value != null) _pageToUseOnStartup = value;
     }
   }
 
@@ -132,7 +136,9 @@ class UnionOuterScrollPosition extends ScrollPositionWithSingleContext implement
     final double oldViewportDimensions = this.viewportDimension;
     final bool result = super.applyViewportDimension(viewportDimension);
     final double oldPixels = pixels;
-    final double page = (oldPixels == null || oldViewportDimensions == 0.0) ? _pageToUseOnStartup : getPageFromPixels(oldPixels, oldViewportDimensions);
+    final double page = (oldPixels == null || oldViewportDimensions == 0.0)
+        ? _pageToUseOnStartup
+        : getPageFromPixels(oldPixels, oldViewportDimensions);
     final double newPixels = getPixelsFromPage(page);
 
     if (newPixels != oldPixels) {
