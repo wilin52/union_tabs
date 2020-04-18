@@ -2,7 +2,7 @@
 
 <img src="screenshot/screenshot.gif"  height="400" alt="Screenshot"/> 
 
-A nested TabBarView overscroll unites outer TabBarView scroll event
+A nested TabBarView overscroll event unites outer TabBarView scroll event
 
 ## Getting Started
 
