@@ -1,16 +1,62 @@
 # union_tabs
 
-A new Flutter application.
+<img src="screenshot/screenshot.gif"  height="400" alt="Screenshot"/> 
+
+A nested TabBarView overscroll unites outer TabBarView scroll event
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+**1.Install**
+```yaml
+dependencies:
+  union_tabs: ^1.0.0+1
+```
 
-A few resources to get you started if this is your first Flutter project:
+**2.Import**
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+```dart
+import 'package:union_tabs/union_tabs.dart';
+```
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+**3.Usage**
+```
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.title),
+          bottom: TabBar(
+              controller: _controller,
+              tabs: tabsText.map((it) => Tab(text: it)).toList()),
+        ),
+        body: UnionOuterTabBarView( /// outerTabBarView
+          controller: _controller,
+          children: _createTabContent(),
+        ));
+  }
+
+  List<Widget> _createTabContent() {
+    List<Widget> tabContent = List();
+    tabContent.add(Center(child: Text(tabsText[0])));
+    final child = Column(
+      children: <Widget>[
+        TabBar(
+            labelColor: Colors.black,
+            unselectedLabelColor: Colors.black45,
+            controller: _childController,
+            tabs: secondTabsText.map((it) => Tab(text: it)).toList()),
+        Expanded(
+          child: UnionInnerTabBarView( /// innerTabBarView
+              controller: _childController,
+              children:
+                  secondTabsText.map((it) => Center(child: Text(it))).toList()),
+        )
+      ],
+    );
+    tabContent.add(child);
+    tabContent.add(Center(child: Text(tabsText[2])));
+    return tabContent;
+  }
+```
+
+More detail see example: main.dart
