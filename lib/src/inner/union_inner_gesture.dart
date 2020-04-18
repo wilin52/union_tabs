@@ -28,7 +28,9 @@ typedef GestureDragEndCallback = void Function(DragEndDetails details);
 /// See [UnionDragGestureRecognizer.onCancel].
 typedef GestureDragCancelCallback = void Function();
 
-typedef GiveUpPointer = bool Function();
+typedef GiveUpPointerEvaluator = bool Function();
+
+typedef OnPointerGiveUp = Function(DragUpdateDetails details);
 
 /// Recognizes movement.
 ///
@@ -60,7 +62,8 @@ abstract class UnionDragGestureRecognizer extends OneSequenceGestureRecognizer {
     Object debugOwner,
     PointerDeviceKind kind,
     this.dragStartBehavior = DragStartBehavior.start,
-    this.giveUpPointer,
+    this.giveUpPointerEvaluator,
+    this.onPointerGiveUp,
   })  : assert(dragStartBehavior != null),
         super(debugOwner: debugOwner, kind: kind);
 
@@ -198,7 +201,9 @@ abstract class UnionDragGestureRecognizer extends OneSequenceGestureRecognizer {
 
   final Map<int, VelocityTracker> _velocityTrackers = <int, VelocityTracker>{};
 
-  final GiveUpPointer giveUpPointer;
+  final GiveUpPointerEvaluator giveUpPointerEvaluator;
+
+  final OnPointerGiveUp onPointerGiveUp;
 
   @override
   bool isPointerAllowed(PointerEvent event) {
@@ -247,11 +252,18 @@ abstract class UnionDragGestureRecognizer extends OneSequenceGestureRecognizer {
     assert(_state != _DragState.ready);
 
     /// 如果不处理手势
-    if (giveUpPointer?.call() ?? false) {
-      resolve(GestureDisposition.rejected);
-      rejectGesture(event.pointer);
-      _giveUpPointer(event.pointer, reject: true);
-      return;
+    if (giveUpPointerEvaluator?.call() ?? false) {
+//      resolve(GestureDisposition.rejected);
+//      rejectGesture(event.pointer);
+//      _giveUpPointer(event.pointer, reject: true);
+      onPointerGiveUp?.call(DragUpdateDetails(
+        sourceTimeStamp: event.timeStamp,
+        delta: _getDeltaForDetails(event.localDelta),
+        primaryDelta: _getPrimaryValueFromOffset(event.localDelta),
+        globalPosition: event.position,
+        localPosition: event.localPosition,
+      ));
+//      return;
     }
 
     if (!event.synthesized &&
@@ -495,8 +507,11 @@ class UnionVerticalDragGestureRecognizer extends UnionDragGestureRecognizer {
   UnionVerticalDragGestureRecognizer({
     Object debugOwner,
     PointerDeviceKind kind,
-    GiveUpPointer giveUpPointer,
-  }) : super(debugOwner: debugOwner, kind: kind, giveUpPointer: giveUpPointer);
+    GiveUpPointerEvaluator giveUpPointer,
+  }) : super(
+            debugOwner: debugOwner,
+            kind: kind,
+            giveUpPointerEvaluator: giveUpPointer);
 
   @override
   bool isFlingGesture(VelocityEstimate estimate) {
@@ -537,8 +552,13 @@ class UnionHorizontalDragGestureRecognizer extends UnionDragGestureRecognizer {
   UnionHorizontalDragGestureRecognizer({
     Object debugOwner,
     PointerDeviceKind kind,
-    GiveUpPointer giveUpPointer,
-  }) : super(debugOwner: debugOwner, kind: kind, giveUpPointer: giveUpPointer);
+    GiveUpPointerEvaluator giveUpPointer,
+    OnPointerGiveUp onPointerGiveUp,
+  }) : super(
+            debugOwner: debugOwner,
+            kind: kind,
+            giveUpPointerEvaluator: giveUpPointer,
+            onPointerGiveUp: onPointerGiveUp);
 
   @override
   bool isFlingGesture(VelocityEstimate estimate) {

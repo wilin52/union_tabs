@@ -11,29 +11,29 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
-import 'package:union_tabs/src/union_gesture.dart';
-import 'package:union_tabs/src/union_tabs_provider.dart';
+import 'union_inner_gesture.dart';
+import 'union_tabs_provider.dart';
 
 export 'package:flutter/physics.dart' show Tolerance;
 
-/// Signature used by [UnionScrollable] to build the viewport through which the
+/// Signature used by [UnionInnerScrollable] to build the viewport through which the
 /// scrollable content is displayed.
 typedef ViewportBuilder = Widget Function(
     BuildContext context, ViewportOffset position);
 
 /// A widget that scrolls.
 ///
-/// [UnionScrollable] implements the interaction model for a scrollable widget,
+/// [UnionInnerScrollable] implements the interaction model for a scrollable widget,
 /// including gesture recognition, but does not have an opinion about how the
 /// viewport, which actually displays the children, is constructed.
 ///
-/// It's rare to construct a [UnionScrollable] directly. Instead, consider [ListView]
+/// It's rare to construct a [UnionInnerScrollable] directly. Instead, consider [ListView]
 /// or [GridView], which combine scrolling, viewporting, and a layout model. To
 /// combine layout models (or to use a custom layout mode), consider using
 /// [CustomScrollView].
 ///
-/// The static [UnionScrollable.of] and [UnionScrollable.ensureVisible] functions are
-/// often used to interact with the [UnionScrollable] widget inside a [ListView] or
+/// The static [UnionInnerScrollable.of] and [UnionInnerScrollable.ensureVisible] functions are
+/// often used to interact with the [UnionInnerScrollable] widget inside a [ListView] or
 /// a [GridView].
 ///
 /// To further customize scrolling behavior with a [UnionScrollable]:
@@ -62,11 +62,11 @@ typedef ViewportBuilder = Widget Function(
 ///    child.
 ///  * [ScrollNotification] and [NotificationListener], which can be used to watch
 ///    the scroll position without using a [ScrollController].
-class UnionScrollable extends StatefulWidget {
+class UnionInnerScrollable extends StatefulWidget {
   /// Creates a widget that scrolls.
   ///
   /// The [axisDirection] and [viewportBuilder] arguments must not be null.
-  const UnionScrollable({
+  const UnionInnerScrollable({
     Key key,
     this.axisDirection = AxisDirection.down,
     this.controller,
@@ -146,7 +146,7 @@ class UnionScrollable extends StatefulWidget {
   ///    slivers and sizes itself based on the size of the slivers.
   final ViewportBuilder viewportBuilder;
 
-  /// Whether the scroll actions introduced by this [UnionScrollable] are exposed
+  /// Whether the scroll actions introduced by this [UnionInnerScrollable] are exposed
   /// in the semantics tree.
   ///
   /// Text fields with an overflow are usually scrollable to make sure that the
@@ -204,7 +204,7 @@ class UnionScrollable extends StatefulWidget {
   Axis get axis => axisDirectionToAxis(axisDirection);
 
   @override
-  UnionScrollableState createState() => UnionScrollableState();
+  UnionInnerScrollableState createState() => UnionInnerScrollableState();
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -220,7 +220,7 @@ class UnionScrollable extends StatefulWidget {
   /// ```dart
   /// UnionScrollableState scrollable = UnionScrollable.of(context);
   /// ```
-  static UnionScrollableState of(BuildContext context) {
+  static UnionInnerScrollableState of(BuildContext context) {
     final _UnionScrollableScope widget =
         context.dependOnInheritedWidgetOfExactType<_UnionScrollableScope>();
     return widget?.scrollable;
@@ -238,7 +238,7 @@ class UnionScrollable extends StatefulWidget {
   }) {
     final List<Future<void>> futures = <Future<void>>[];
 
-    UnionScrollableState scrollable = UnionScrollable.of(context);
+    UnionInnerScrollableState scrollable = UnionInnerScrollable.of(context);
     while (scrollable != null) {
       futures.add(scrollable.position.ensureVisible(
         context.findRenderObject(),
@@ -248,7 +248,7 @@ class UnionScrollable extends StatefulWidget {
         alignmentPolicy: alignmentPolicy,
       ));
       context = scrollable.context;
-      scrollable = UnionScrollable.of(context);
+      scrollable = UnionInnerScrollable.of(context);
     }
 
     if (futures.isEmpty || duration == Duration.zero)
@@ -270,7 +270,7 @@ class _UnionScrollableScope extends InheritedWidget {
         assert(child != null),
         super(key: key, child: child);
 
-  final UnionScrollableState scrollable;
+  final UnionInnerScrollableState scrollable;
   final ScrollPosition position;
 
   @override
@@ -279,22 +279,22 @@ class _UnionScrollableScope extends InheritedWidget {
   }
 }
 
-/// State object for a [UnionScrollable] widget.
+/// State object for a [UnionInnerScrollable] widget.
 ///
-/// To manipulate a [UnionScrollable] widget's scroll position, use the object
+/// To manipulate a [UnionInnerScrollable] widget's scroll position, use the object
 /// obtained from the [position] property.
 ///
-/// To be informed of when a [UnionScrollable] widget is scrolling, use a
+/// To be informed of when a [UnionInnerScrollable] widget is scrolling, use a
 /// [NotificationListener] to listen for [ScrollNotification] notifications.
 ///
 /// This class is not intended to be subclassed. To specialize the behavior of a
-/// [UnionScrollable], provide it with a [ScrollPhysics].
-class UnionScrollableState extends State<UnionScrollable>
+/// [UnionInnerScrollable], provide it with a [ScrollPhysics].
+class UnionInnerScrollableState extends State<UnionInnerScrollable>
     with TickerProviderStateMixin
     implements ScrollContext {
-  /// The manager for this [UnionScrollable] widget's viewport position.
+  /// The manager for this [UnionInnerScrollable] widget's viewport position.
   ///
-  /// To control what kind of [ScrollPosition] is created for a [UnionScrollable],
+  /// To control what kind of [ScrollPosition] is created for a [UnionInnerScrollable],
   /// provide it with custom [ScrollController] that creates the appropriate
   /// [ScrollPosition] in its [ScrollController.createScrollPosition] method.
   ScrollPosition get position => _position;
@@ -333,11 +333,34 @@ class UnionScrollableState extends State<UnionScrollable>
 
   @override
   void initState() {
-    horizontalDragGestureRecognizer =
-        UnionHorizontalDragGestureRecognizer(giveUpPointer: () {
-      return _overscroll;
-    });
+    horizontalDragGestureRecognizer = UnionHorizontalDragGestureRecognizer(
+        giveUpPointer: () {
+          return _overscroll;
+        },
+        onPointerGiveUp: _onPointerGiveUp);
     super.initState();
+  }
+
+  void _onPointerGiveUp(DragUpdateDetails dragDetails) {
+    double offset = position.pixels -
+        position.physics
+            .applyPhysicsToUserOffset(position, dragDetails.primaryDelta);
+    if (offset == 0.0) {
+      return;
+    }
+
+    final double overscroll = position.applyBoundaryConditions(offset);
+
+    if (overscroll == 0.0) {
+      return;
+    }
+
+    OverscrollNotification(
+            metrics: position.copyWith(),
+            context: context,
+            dragDetails: dragDetails,
+            overscroll: overscroll)
+        .dispatch(context);
   }
 
   @override
@@ -353,7 +376,7 @@ class UnionScrollableState extends State<UnionScrollable>
     _overscroll = _tabBarOverScroll.overScroll;
   }
 
-  bool _shouldUpdatePosition(UnionScrollable oldWidget) {
+  bool _shouldUpdatePosition(UnionInnerScrollable oldWidget) {
     ScrollPhysics newPhysics = widget.physics;
     ScrollPhysics oldPhysics = oldWidget.physics;
     do {
@@ -366,7 +389,7 @@ class UnionScrollableState extends State<UnionScrollable>
   }
 
   @override
-  void didUpdateWidget(UnionScrollable oldWidget) {
+  void didUpdateWidget(UnionInnerScrollable oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     if (widget.controller != oldWidget.controller) {
@@ -514,6 +537,9 @@ class UnionScrollableState extends State<UnionScrollable>
   void _handleDragUpdate(DragUpdateDetails details) {
     // _drag might be null if the drag activity ended and called _disposeDrag.
     assert(_hold == null || _drag == null);
+    if (_overscroll) {
+      return;
+    }
     _drag?.update(details);
   }
 

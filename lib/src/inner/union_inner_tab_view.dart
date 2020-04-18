@@ -2,7 +2,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:union_tabs/src/union_page_view.dart';
+import 'package:union_tabs/src/inner/union_inner_page_view.dart';
 
 /// A page view that displays the widget which corresponds to the currently
 /// selected tab.
@@ -16,11 +16,11 @@ import 'package:union_tabs/src/union_page_view.dart';
 /// [children] list and the length of the [TabBar.tabs] list.
 ///
 /// To see a sample implementation, visit the [TabController] documentation.
-class UnionTabBarView extends StatefulWidget {
+class UnionInnerTabBarView extends StatefulWidget {
   /// Creates a page view with one child per tab.
   ///
   /// The length of [children] must be the same as the [controller]'s length.
-  const UnionTabBarView({
+  const UnionInnerTabBarView({
     Key key,
     @required this.children,
     this.controller,
@@ -57,14 +57,14 @@ class UnionTabBarView extends StatefulWidget {
   final DragStartBehavior dragStartBehavior;
 
   @override
-  _UnionTabBarViewState createState() => _UnionTabBarViewState();
+  _UnionInnerTabBarViewState createState() => _UnionInnerTabBarViewState();
 }
 
 final PageScrollPhysics _kTabBarViewPhysics = const PageScrollPhysics().applyTo(const ClampingScrollPhysics());
 
-class _UnionTabBarViewState extends State<UnionTabBarView> {
+class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
   TabController _controller;
-  UnionPageController _pageController;
+  UnionInnerPageController _pageController;
   List<Widget> _children;
   List<Widget> _childrenWithKey;
   int _currentIndex;
@@ -111,11 +111,11 @@ class _UnionTabBarViewState extends State<UnionTabBarView> {
     super.didChangeDependencies();
     _updateTabController();
     _currentIndex = _controller?.index;
-    _pageController = UnionPageController(initialPage: _currentIndex ?? 0);
+    _pageController = UnionInnerPageController(initialPage: _currentIndex ?? 0);
   }
 
   @override
-  void didUpdateWidget(UnionTabBarView oldWidget) {
+  void didUpdateWidget(UnionInnerTabBarView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.controller != oldWidget.controller)
       _updateTabController();
@@ -223,7 +223,7 @@ class _UnionTabBarViewState extends State<UnionTabBarView> {
     }());
     return NotificationListener<ScrollNotification>(
       onNotification: _handleScrollNotification,
-      child: UnionPageView(
+      child: UnionInnerPageView(
         dragStartBehavior: widget.dragStartBehavior,
         controller: _pageController,
         physics: widget.physics == null ? _kTabBarViewPhysics : _kTabBarViewPhysics.applyTo(widget.physics),

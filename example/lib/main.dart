@@ -25,12 +25,16 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
-  List<String> tabsText = ["一", "二", "三", "四", "五"];
+  List<String> tabsText = ["一", "二"];
+  List<String> secondTabsText = ["one", "two", "three", "four", "five"];
   TabController _controller;
+  TabController _childController;
 
   @override
   void initState() {
     _controller = TabController(length: tabsText.length, vsync: this);
+    _childController =
+        TabController(length: secondTabsText.length, vsync: this);
     super.initState();
   }
 
@@ -43,9 +47,38 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               controller: _controller,
               tabs: tabsText.map((it) => Tab(text: it)).toList()),
         ),
-        body: TabBarView(
+        body: UnionOuterTabBarView(
           controller: _controller,
-          children: tabsText.map((it) => Center(child: Text(it))).toList(),
+          children: _createTabContent(),
         ));
+  }
+
+  List<Widget> _createTabContent() {
+    List<Widget> tabContent = List();
+    tabContent.add(Center(child: Text(tabsText[0])));
+    final child = Column(
+      children: <Widget>[
+        TabBar(
+            labelColor: Colors.black,
+            unselectedLabelColor: Colors.black45,
+            controller: _childController,
+            tabs: secondTabsText.map((it) => Tab(text: it)).toList()),
+        Expanded(
+          child: UnionInnerTabBarView(
+              controller: _childController,
+              children:
+                  secondTabsText.map((it) => Center(child: Text(it))).toList()),
+        )
+      ],
+    );
+    tabContent.add(child);
+    return tabContent;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _childController.dispose();
+    super.dispose();
   }
 }
