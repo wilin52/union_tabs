@@ -11,6 +11,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
+import 'package:union_tabs/src/union_gesture.dart';
 import 'package:union_tabs/src/union_tabs_provider.dart';
 
 export 'package:flutter/physics.dart' show Tolerance;
@@ -332,7 +333,8 @@ class UnionScrollableState extends State<UnionScrollable>
 
   @override
   void initState() {
-    horizontalDragGestureRecognizer = UnionHorizontalDragGestureRecognizer(() {
+    horizontalDragGestureRecognizer =
+        UnionHorizontalDragGestureRecognizer(giveUpPointer: () {
       return _overscroll;
     });
     super.initState();
@@ -787,24 +789,5 @@ class _RenderScrollSemantics extends RenderProxyBox {
   void clearSemantics() {
     super.clearSemantics();
     _innerNode = null;
-  }
-}
-
-typedef GiveUpPointer = bool Function();
-
-class UnionHorizontalDragGestureRecognizer
-    extends HorizontalDragGestureRecognizer {
-  final GiveUpPointer giveUpPointer;
-
-  UnionHorizontalDragGestureRecognizer(this.giveUpPointer);
-
-  @override
-  void handleEvent(PointerEvent event) {
-    super.handleEvent(event);
-    if (!(event is PointerUpEvent || event is PointerCancelEvent)) {
-      if (giveUpPointer?.call() ?? false) {
-        stopTrackingPointer(event.pointer);
-      }
-    }
   }
 }
