@@ -9,7 +9,7 @@ A nested TabBarView overscroll event unites outer TabBarView scroll event
 **1.Install**
 ```yaml
 dependencies:
-  union_tabs: ^1.0.0+1
+  union_tabs: ^1.0.0+3
 ```
 
 **2.Import**

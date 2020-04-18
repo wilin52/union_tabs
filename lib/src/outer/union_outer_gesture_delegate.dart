@@ -16,6 +16,7 @@ class UnionOuterGestureDelegate {
   /// record the gesture.
   Drag _drag;
 
+  /// 将处理UnionScrollNotification.
   bool handleUnionScrollNotification(
       BuildContext context, UnionScrollNotification notification) {
     if (tabController.index != notification.index) {

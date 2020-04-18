@@ -47,6 +47,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               controller: _controller,
               tabs: tabsText.map((it) => Tab(text: it)).toList()),
         ),
+
+        /// outer tabTarView which receives  OverscrollNotification of inner tabBarView.
         body: UnionOuterTabBarView(
           controller: _controller,
           children: _createTabContent(),
@@ -64,6 +66,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             controller: _childController,
             tabs: secondTabsText.map((it) => Tab(text: it)).toList()),
         Expanded(
+          /// convert inner tabBarView OverscrollNotification to UnionOverscrollNotification to notify outer tabBarView.
           child: UnionInnerTabBarView(
               controller: _childController,
               children:
