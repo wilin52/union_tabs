@@ -1,3 +1,7 @@
+## 1.0.0+4
+
+* fix nested TabBarView overscrolling then scroll reversely, the UI stuck.
+
 ## 1.0.0+3
 
 * add Demo Comments.

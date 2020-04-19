@@ -353,6 +353,12 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
         position.physics.applyBoundaryConditions(position, offset);
 
     if (overscroll == 0.0) {
+      OverscrollNotification(
+              metrics: position.copyWith(),
+              context: context,
+              dragDetails: dragDetails,
+              overscroll: -offset)
+          .dispatch(context);
       return;
     }
 
