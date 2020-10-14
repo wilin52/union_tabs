@@ -12,7 +12,7 @@ description: A nested TabBarView overscroll event unites outer TabBarView scroll
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.0.0+4
+version: 1.0.0+5
 author: wilin <wilin52@163.com>
 homepage: https://github.com/wilin52/union_tabs
 
@@ -25,8 +25,7 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^0.1.2
-  vector_math: ^2.0.8
+  cupertino_icons: ^1.0.0
 
 
 dev_dependencies:

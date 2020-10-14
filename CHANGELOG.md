@@ -1,3 +1,7 @@
+## 1.0.0+5
+
+* support flutter 1.12, remove duplicate code.
+
 ## 1.0.0+4
 
 * fix nested TabBarView overscrolling then scroll reversely, the UI stuck.
