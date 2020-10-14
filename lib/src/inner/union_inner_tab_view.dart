@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:union_tabs/src/inner/union_inner_page_view.dart';
+import 'package:union_tabs/src/notification/page_controller.dart';
 
 /// A page view that displays the widget which corresponds to the currently
 /// selected tab.
@@ -64,7 +65,7 @@ final PageScrollPhysics _kTabBarViewPhysics =
 
 class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
   TabController _controller;
-  UnionInnerPageController _pageController;
+  UnionPageController _pageController;
   List<Widget> _children;
   List<Widget> _childrenWithKey;
   int _currentIndex;
@@ -109,7 +110,7 @@ class _UnionInnerTabBarViewState extends State<UnionInnerTabBarView> {
     super.didChangeDependencies();
     _updateTabController();
     _currentIndex = _controller?.index;
-    _pageController = UnionInnerPageController(initialPage: _currentIndex ?? 0);
+    _pageController = UnionPageController(initialPage: _currentIndex ?? 0);
   }
 
   @override

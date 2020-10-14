@@ -221,40 +221,10 @@ class UnionInnerScrollable extends StatefulWidget {
   /// UnionScrollableState scrollable = UnionScrollable.of(context);
   /// ```
   static UnionInnerScrollableState of(BuildContext context) {
-    final _UnionScrollableScope widget =
-        context.dependOnInheritedWidgetOfExactType<_UnionScrollableScope>();
+    final _UnionScrollableScope widget = context
+        .getElementForInheritedWidgetOfExactType<_UnionScrollableScope>()
+        ?.widget;
     return widget?.scrollable;
-  }
-
-  /// Scrolls the scrollables that enclose the given context so as to make the
-  /// given context visible.
-  static Future<void> ensureVisible(
-    BuildContext context, {
-    double alignment = 0.0,
-    Duration duration = Duration.zero,
-    Curve curve = Curves.ease,
-    ScrollPositionAlignmentPolicy alignmentPolicy =
-        ScrollPositionAlignmentPolicy.explicit,
-  }) {
-    final List<Future<void>> futures = <Future<void>>[];
-
-    UnionInnerScrollableState scrollable = UnionInnerScrollable.of(context);
-    while (scrollable != null) {
-      futures.add(scrollable.position.ensureVisible(
-        context.findRenderObject(),
-        alignment: alignment,
-        duration: duration,
-        curve: curve,
-        alignmentPolicy: alignmentPolicy,
-      ));
-      context = scrollable.context;
-      scrollable = UnionInnerScrollable.of(context);
-    }
-
-    if (futures.isEmpty || duration == Duration.zero)
-      return Future<void>.value();
-    if (futures.length == 1) return futures.single;
-    return Future.wait<void>(futures).then<void>((List<void> _) => null);
   }
 }
 
