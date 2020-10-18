@@ -1,3 +1,7 @@
+## 1.0.0+6
+
+* support flutter 1.22, remove duplicate code.
+
 ## 1.0.0+5
 
 * support flutter 1.12, remove duplicate code.
