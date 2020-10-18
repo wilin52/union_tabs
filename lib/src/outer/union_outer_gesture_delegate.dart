@@ -46,6 +46,16 @@ class UnionOuterGestureDelegate {
     } else if (notification is UnionScrollEndNotification) {
       _drag?.cancel();
       _drag = null;
+      double dx = notification.dragDetails?.velocity?.pixelsPerSecond?.dx ?? 0;
+      if (dx != 0) {
+        int offset = dx > 0 ? -1 : 1;
+        int index = tabController.index + offset;
+        if (index < 0) index = 0;
+        if (index >= tabController.length) index = tabController.length - 1;
+
+        tabController.animateTo(tabController.index + offset,
+            duration: Duration(milliseconds: 500));
+      }
     } else if (notification is UnionScrollUpdateNotification) {
       if (_drag != null && notification.dragDetails != null) {
         /// update the viewpager's position
