@@ -31,7 +31,8 @@ typedef GiveUpPointerEvaluator = bool Function();
 
 typedef OnPointerGiveUp = Function(DragUpdateDetails details);
 
-typedef GestureVelocityTrackerBuilder = VelocityTracker Function(PointerEvent event);
+typedef GestureVelocityTrackerBuilder = VelocityTracker Function(
+    PointerEvent event);
 
 /// Recognizes movement.
 ///
@@ -66,8 +67,7 @@ abstract class UnionDragGestureRecognizer extends OneSequenceGestureRecognizer {
     this.giveUpPointerEvaluator,
     this.onPointerGiveUp,
     this.velocityTrackerBuilder = _defaultBuilder,
-  })
-      : assert(dragStartBehavior != null),
+  })  : assert(dragStartBehavior != null),
         super(debugOwner: debugOwner, kind: kind);
 
   static VelocityTracker _defaultBuilder(PointerEvent event) =>
@@ -325,14 +325,12 @@ abstract class UnionDragGestureRecognizer extends OneSequenceGestureRecognizer {
         _lastTransform = event.transform;
         final Offset movedLocally = _getDeltaForDetails(event.localDelta);
         final Matrix4 localToGlobalTransform =
-        event.transform == null ? null : Matrix4.tryInvert(event.transform);
-        _globalDistanceMoved += PointerEvent
-            .transformDeltaViaPositions(
-          transform: localToGlobalTransform,
-          untransformedDelta: movedLocally,
-          untransformedEndPosition: event.localPosition,
-        )
-            .distance *
+            event.transform == null ? null : Matrix4.tryInvert(event.transform);
+        _globalDistanceMoved += PointerEvent.transformDeltaViaPositions(
+              transform: localToGlobalTransform,
+              untransformedDelta: movedLocally,
+              untransformedEndPosition: event.localPosition,
+            ).distance *
             (_getPrimaryValueFromOffset(movedLocally) ?? 1).sign;
         if (_hasSufficientGlobalDistanceToAccept(event.kind))
           resolve(GestureDisposition.accepted);
@@ -369,7 +367,7 @@ abstract class UnionDragGestureRecognizer extends OneSequenceGestureRecognizer {
       _checkStart(timestamp);
       if (localUpdateDelta != Offset.zero && onUpdate != null) {
         final Matrix4 localToGlobal =
-        transform != null ? Matrix4.tryInvert(transform) : null;
+            transform != null ? Matrix4.tryInvert(transform) : null;
         final Offset correctedLocalPosition =
             _initialPosition.local + localUpdateDelta;
         final Offset globalUpdateDelta =
@@ -470,8 +468,7 @@ abstract class UnionDragGestureRecognizer extends OneSequenceGestureRecognizer {
 
   void _checkEnd(int pointer) {
     assert(_initialButtons == kPrimaryButton);
-    if (onEnd == null)
-      return;
+    if (onEnd == null) return;
 
     final VelocityTracker tracker = _velocityTrackers[pointer];
     assert(tracker != null);
@@ -481,10 +478,10 @@ abstract class UnionDragGestureRecognizer extends OneSequenceGestureRecognizer {
 
     final VelocityEstimate estimate = tracker.getVelocityEstimate();
     if (estimate != null && isFlingGesture(estimate, tracker.kind)) {
-      final Velocity velocity = Velocity(
-          pixelsPerSecond: estimate.pixelsPerSecond)
-          .clampMagnitude(minFlingVelocity ?? kMinFlingVelocity,
-          maxFlingVelocity ?? kMaxFlingVelocity);
+      final Velocity velocity =
+          Velocity(pixelsPerSecond: estimate.pixelsPerSecond).clampMagnitude(
+              minFlingVelocity ?? kMinFlingVelocity,
+              maxFlingVelocity ?? kMaxFlingVelocity);
       details = DragEndDetails(
         velocity: velocity,
         primaryVelocity: _getPrimaryValueFromOffset(velocity.pixelsPerSecond),
@@ -543,9 +540,10 @@ class UnionVerticalDragGestureRecognizer extends UnionDragGestureRecognizer {
     Object debugOwner,
     PointerDeviceKind kind,
     GiveUpPointerEvaluator giveUpPointer,
-  }) : super(debugOwner: debugOwner,
-      kind: kind,
-      giveUpPointerEvaluator: giveUpPointer);
+  }) : super(
+            debugOwner: debugOwner,
+            kind: kind,
+            giveUpPointerEvaluator: giveUpPointer);
 
   @override
   bool isFlingGesture(VelocityEstimate estimate, PointerDeviceKind kind) {
@@ -591,10 +589,10 @@ class UnionHorizontalDragGestureRecognizer extends UnionDragGestureRecognizer {
     GiveUpPointerEvaluator giveUpPointer,
     OnPointerGiveUp onPointerGiveUp,
   }) : super(
-      debugOwner: debugOwner,
-      kind: kind,
-      giveUpPointerEvaluator: giveUpPointer,
-      onPointerGiveUp: onPointerGiveUp);
+            debugOwner: debugOwner,
+            kind: kind,
+            giveUpPointerEvaluator: giveUpPointer,
+            onPointerGiveUp: onPointerGiveUp);
 
   @override
   bool isFlingGesture(VelocityEstimate estimate, PointerDeviceKind kind) {
@@ -605,7 +603,8 @@ class UnionHorizontalDragGestureRecognizer extends UnionDragGestureRecognizer {
   }
 
   @override
-  bool _hasSufficientGlobalDistanceToAccept(PointerDeviceKind pointerDeviceKind) {
+  bool _hasSufficientGlobalDistanceToAccept(
+      PointerDeviceKind pointerDeviceKind) {
     return _globalDistanceMoved.abs() > computeHitSlop(pointerDeviceKind);
   }
 
@@ -630,14 +629,15 @@ class UnionHorizontalDragGestureRecognizer extends UnionDragGestureRecognizer {
 ///    some time has passed.
 class PanGestureRecognizer extends UnionDragGestureRecognizer {
   /// Create a gesture recognizer for tracking movement on a plane.
-  PanGestureRecognizer({ Object debugOwner }) : super(debugOwner: debugOwner);
+  PanGestureRecognizer({Object debugOwner}) : super(debugOwner: debugOwner);
 
   @override
   bool isFlingGesture(VelocityEstimate estimate, PointerDeviceKind kind) {
     final double minVelocity = minFlingVelocity ?? kMinFlingVelocity;
     final double minDistance = minFlingDistance ?? computeHitSlop(kind);
-    return estimate.pixelsPerSecond.distanceSquared > minVelocity * minVelocity
-        && estimate.offset.distanceSquared > minDistance * minDistance;
+    return estimate.pixelsPerSecond.distanceSquared >
+            minVelocity * minVelocity &&
+        estimate.offset.distanceSquared > minDistance * minDistance;
   }
 
   @override

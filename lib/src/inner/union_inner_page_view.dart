@@ -18,7 +18,7 @@ class _ForceImplicitScrollPhysics extends ScrollPhysics {
   const _ForceImplicitScrollPhysics({
     @required this.allowImplicitScrolling,
     ScrollPhysics parent,
-  }) : assert(allowImplicitScrolling != null),
+  })  : assert(allowImplicitScrolling != null),
         super(parent: parent);
 
   @override
