@@ -1,6 +1,6 @@
-## 1.0.0+6
+## 1.0.0+7
 
-* support flutter 1.22, remove duplicate code.
+* fix fast overscroll then back to the previous one.
 
 ## 1.0.0+5
 
