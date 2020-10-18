@@ -10,6 +10,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/painting.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'union_inner_gesture.dart';
 import 'union_tabs_provider.dart';
@@ -72,9 +73,11 @@ class UnionInnerScrollable extends StatefulWidget {
     this.controller,
     this.physics,
     @required this.viewportBuilder,
+    this.incrementCalculator,
     this.excludeFromSemantics = false,
     this.semanticChildCount,
     this.dragStartBehavior = DragStartBehavior.start,
+    this.restorationId,
   })  : assert(axisDirection != null),
         assert(dragStartBehavior != null),
         assert(viewportBuilder != null),
@@ -146,6 +149,19 @@ class UnionInnerScrollable extends StatefulWidget {
   ///    slivers and sizes itself based on the size of the slivers.
   final ViewportBuilder viewportBuilder;
 
+  /// An optional function that will be called to calculate the distance to
+  /// scroll when the scrollable is asked to scroll via the keyboard using a
+  /// [ScrollAction].
+  ///
+  /// If not supplied, the [UnionInnerScrollable] will scroll a default amount when a
+  /// keyboard navigation key is pressed (e.g. pageUp/pageDown, control-upArrow,
+  /// etc.), or otherwise invoked by a [ScrollAction].
+  ///
+  /// If [incrementCalculator] is null, the default for
+  /// [ScrollIncrementType.page] is 80% of the size of the scroll window, and
+  /// for [ScrollIncrementType.line], 50 logical pixels.
+  final ScrollIncrementCalculator incrementCalculator;
+
   /// Whether the scroll actions introduced by this [UnionInnerScrollable] are exposed
   /// in the semantics tree.
   ///
@@ -198,6 +214,22 @@ class UnionInnerScrollable extends StatefulWidget {
   /// {@endtemplate}
   final DragStartBehavior dragStartBehavior;
 
+  /// {@template flutter.widgets.scrollable.restorationId}
+  /// Restoration ID to save and restore the scroll offset of the scrollable.
+  ///
+  /// If a restoration id is provided, the scrollable will persist its current
+  /// scroll offset and restore it during state restoration.
+  ///
+  /// The scroll offset is persisted in a [RestorationBucket] claimed from
+  /// the surrounding [RestorationScope] using the provided restoration ID.
+  ///
+  /// See also:
+  ///
+  ///  * [RestorationManager], which explains how state restoration works in
+  ///    Flutter.
+  /// {@endtemplate}
+  final String restorationId;
+
   /// The axis along which the scroll view scrolls.
   ///
   /// Determined by the [axisDirection].
@@ -211,6 +243,7 @@ class UnionInnerScrollable extends StatefulWidget {
     super.debugFillProperties(properties);
     properties.add(EnumProperty<AxisDirection>('axisDirection', axisDirection));
     properties.add(DiagnosticsProperty<ScrollPhysics>('physics', physics));
+    properties.add(StringProperty('restorationId', restorationId));
   }
 
   /// The state from the closest instance of this class that encloses the given context.
@@ -220,11 +253,67 @@ class UnionInnerScrollable extends StatefulWidget {
   /// ```dart
   /// UnionScrollableState scrollable = UnionScrollable.of(context);
   /// ```
+  ///
+  /// Calling this method will create a dependency on the closest [Scrollable]
+  /// in the [context], if there is one.
   static UnionInnerScrollableState of(BuildContext context) {
+    final _UnionScrollableScope widget =
+        context.dependOnInheritedWidgetOfExactType<_UnionScrollableScope>();
+    return widget?.scrollable;
+  }
+
+  /// Provides a heuristic to determine if expensive frame-bound tasks should be
+  /// deferred for the [context] at a specific point in time.
+  ///
+  /// Calling this method does _not_ create a dependency on any other widget.
+  /// This also means that the value returned is only good for the point in time
+  /// when it is called, and callers will not get updated if the value changes.
+  ///
+  /// The heuristic used is determined by the [physics] of this [Scrollable]
+  /// via [ScrollPhysics.recommendDeferredLoading]. That method is called with
+  /// the current [ScrollPosition.activity]'s [ScrollActivity.velocity].
+  ///
+  /// If there is no [Scrollable] in the widget tree above the [context], this
+  /// method returns false.
+  static bool recommendDeferredLoadingForContext(BuildContext context) {
     final _UnionScrollableScope widget = context
         .getElementForInheritedWidgetOfExactType<_UnionScrollableScope>()
-        ?.widget;
-    return widget?.scrollable;
+        ?.widget as _UnionScrollableScope;
+    if (widget == null) {
+      return false;
+    }
+    return widget.position.recommendDeferredLoading(context);
+  }
+
+  /// Scrolls the scrollables that enclose the given context so as to make the
+  /// given context visible.
+  static Future<void> ensureVisible(
+    BuildContext context, {
+    double alignment = 0.0,
+    Duration duration = Duration.zero,
+    Curve curve = Curves.ease,
+    ScrollPositionAlignmentPolicy alignmentPolicy =
+        ScrollPositionAlignmentPolicy.explicit,
+  }) {
+    final List<Future<void>> futures = <Future<void>>[];
+
+    ScrollableState scrollable = Scrollable.of(context);
+    while (scrollable != null) {
+      futures.add(scrollable.position.ensureVisible(
+        context.findRenderObject(),
+        alignment: alignment,
+        duration: duration,
+        curve: curve,
+        alignmentPolicy: alignmentPolicy,
+      ));
+      context = scrollable.context;
+      scrollable = Scrollable.of(context);
+    }
+
+    if (futures.isEmpty || duration == Duration.zero)
+      return Future<void>.value();
+    if (futures.length == 1) return futures.single;
+    return Future.wait<void>(futures).then<void>((List<void> _) => null);
   }
 }
 
@@ -260,7 +349,7 @@ class _UnionScrollableScope extends InheritedWidget {
 /// This class is not intended to be subclassed. To specialize the behavior of a
 /// [UnionInnerScrollable], provide it with a [ScrollPhysics].
 class UnionInnerScrollableState extends State<UnionInnerScrollable>
-    with TickerProviderStateMixin
+    with TickerProviderStateMixin, RestorationMixin
     implements ScrollContext {
   /// The manager for this [UnionInnerScrollable] widget's viewport position.
   ///
@@ -269,6 +358,9 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
   /// [ScrollPosition] in its [ScrollController.createScrollPosition] method.
   ScrollPosition get position => _position;
   ScrollPosition _position;
+
+  final _RestorableScrollOffset _persistedScrollOffset =
+      _RestorableScrollOffset();
 
   @override
   AxisDirection get axisDirection => widget.axisDirection;
@@ -341,6 +433,27 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
   }
 
   @override
+  void restoreState(RestorationBucket oldBucket, bool initialRestore) {
+    registerForRestoration(_persistedScrollOffset, 'offset');
+    if (position == null) {
+      return;
+    }
+    if (_persistedScrollOffset.value != null) {
+      position.restoreOffset(_persistedScrollOffset.value,
+          initialRestore: initialRestore);
+    }
+  }
+
+  @override
+  void saveOffset(double offset) {
+    assert(debugIsSerializableForRestoration(offset));
+    _persistedScrollOffset.value = offset;
+    // [saveOffset] is called after a scrolling ends and it is usually not
+    // followed by a frame. Therefore, manually flush restoration data.
+    ServicesBinding.instance.restorationManager.flushData();
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _updatePosition();
@@ -382,6 +495,7 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
     _tabBarOverScroll?.removeListener(_overScroll);
     widget.controller?.detach(position);
     position.dispose();
+    _persistedScrollOffset.dispose();
     super.dispose();
   }
 
@@ -434,6 +548,8 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
                   ..minFlingDistance = _physics?.minFlingDistance
                   ..minFlingVelocity = _physics?.minFlingVelocity
                   ..maxFlingVelocity = _physics?.maxFlingVelocity
+                  ..velocityTrackerBuilder =
+                      _configuration.velocityTrackerBuilder(context)
                   ..dragStartBehavior = widget.dragStartBehavior;
               },
             ),
@@ -455,6 +571,8 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
                   ..minFlingDistance = _physics?.minFlingDistance
                   ..minFlingVelocity = _physics?.minFlingVelocity
                   ..maxFlingVelocity = _physics?.maxFlingVelocity
+                  ..velocityTrackerBuilder =
+                      _configuration.velocityTrackerBuilder(context)
                   ..dragStartBehavior = widget.dragStartBehavior;
               },
             ),
@@ -478,8 +596,8 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
     if (_shouldIgnorePointer == value) return;
     _shouldIgnorePointer = value;
     if (_ignorePointerKey.currentContext != null) {
-      final RenderIgnorePointer renderBox =
-          _ignorePointerKey.currentContext.findRenderObject();
+      final RenderIgnorePointer renderBox = _ignorePointerKey.currentContext
+          .findRenderObject() as RenderIgnorePointer;
       renderBox.ignoring = _shouldIgnorePointer;
     }
   }
@@ -580,7 +698,7 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
       return;
     }
     final double targetScrollOffset =
-        _targetScrollOffsetForPointerScroll(event);
+        _targetScrollOffsetForPointerScroll(event as PointerScrollEvent);
     if (targetScrollOffset != position.pixels) {
       position.jumpTo(targetScrollOffset);
     }
@@ -628,8 +746,7 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
         key: _scrollSemanticsKey,
         child: result,
         position: position,
-        allowImplicitScrolling: widget?.physics?.allowImplicitScrolling ??
-            _physics.allowImplicitScrolling,
+        allowImplicitScrolling: _physics.allowImplicitScrolling,
         semanticChildCount: widget.semanticChildCount,
       );
     }
@@ -642,7 +759,12 @@ class UnionInnerScrollableState extends State<UnionInnerScrollable>
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(DiagnosticsProperty<ScrollPosition>('position', position));
+    properties
+        .add(DiagnosticsProperty<ScrollPhysics>('effective physics', _physics));
   }
+
+  @override
+  String get restorationId => widget.restorationId;
 }
 
 /// With [_ScrollSemantics] certain child [SemanticsNode]s can be
@@ -767,12 +889,12 @@ class _RenderScrollSemantics extends RenderProxyBox {
     _innerNode ??= SemanticsNode(showOnScreen: showOnScreen);
     _innerNode
       ..isMergedIntoParent = node.isPartOfNodeMerging
-      ..rect = Offset.zero & node.rect.size;
+      ..rect = node.rect;
 
     int firstVisibleIndex;
     final List<SemanticsNode> excluded = <SemanticsNode>[_innerNode];
     final List<SemanticsNode> included = <SemanticsNode>[];
-    for (SemanticsNode child in children) {
+    for (final SemanticsNode child in children) {
       assert(child.isTagged(RenderViewport.useTwoPaneSemantics));
       if (child.isTagged(RenderViewport.excludeFromScrolling)) {
         excluded.add(child);
@@ -793,4 +915,258 @@ class _RenderScrollSemantics extends RenderProxyBox {
     super.clearSemantics();
     _innerNode = null;
   }
+}
+
+/// A typedef for a function that can calculate the offset for a type of scroll
+/// increment given a [ScrollIncrementDetails].
+///
+/// This function is used as the type for [Scrollable.incrementCalculator],
+/// which is called from a [ScrollAction].
+typedef ScrollIncrementCalculator = double Function(
+    ScrollIncrementDetails details);
+
+/// Describes the type of scroll increment that will be performed by a
+/// [ScrollAction] on a [Scrollable].
+///
+/// This is used to configure a [ScrollIncrementDetails] object to pass to a
+/// [ScrollIncrementCalculator] function on a [Scrollable].
+///
+/// {@template flutter.widgets.scrollable.scroll_increment_type.intent}
+/// This indicates the *intent* of the scroll, not necessarily the size. Not all
+/// scrollable areas will have the concept of a "line" or "page", but they can
+/// respond to the different standard key bindings that cause scrolling, which
+/// are bound to keys that people use to indicate a "line" scroll (e.g.
+/// control-arrowDown keys) or a "page" scroll (e.g. pageDown key). It is
+/// recommended that at least the relative magnitudes of the scrolls match
+/// expectations.
+/// {@endtemplate}
+enum ScrollIncrementType {
+  /// Indicates that the [ScrollIncrementCalculator] should return the scroll
+  /// distance it should move when the user requests to scroll by a "line".
+  ///
+  /// The distance a "line" scrolls refers to what should happen when the key
+  /// binding for "scroll down/up by a line" is triggered. It's up to the
+  /// [ScrollIncrementCalculator] function to decide what that means for a
+  /// particular scrollable.
+  line,
+
+  /// Indicates that the [ScrollIncrementCalculator] should return the scroll
+  /// distance it should move when the user requests to scroll by a "page".
+  ///
+  /// The distance a "page" scrolls refers to what should happen when the key
+  /// binding for "scroll down/up by a page" is triggered. It's up to the
+  /// [ScrollIncrementCalculator] function to decide what that means for a
+  /// particular scrollable.
+  page,
+}
+
+/// A details object that describes the type of scroll increment being requested
+/// of a [ScrollIncrementCalculator] function, as well as the current metrics
+/// for the scrollable.
+class ScrollIncrementDetails {
+  /// A const constructor for a [ScrollIncrementDetails].
+  ///
+  /// All of the arguments must not be null, and are required.
+  const ScrollIncrementDetails({
+    @required this.type,
+    @required this.metrics,
+  })  : assert(type != null),
+        assert(metrics != null);
+
+  /// The type of scroll this is (e.g. line, page, etc.).
+  ///
+  /// {@macro flutter.widgets.scrollable.scroll_increment_type.intent}
+  final ScrollIncrementType type;
+
+  /// The current metrics of the scrollable that is being scrolled.
+  final ScrollMetrics metrics;
+}
+
+/// An [Intent] that represents scrolling the nearest scrollable by an amount
+/// appropriate for the [type] specified.
+///
+/// The actual amount of the scroll is determined by the
+/// [Scrollable.incrementCalculator], or by its defaults if that is not
+/// specified.
+class ScrollIntent extends Intent {
+  /// Creates a const [ScrollIntent] that requests scrolling in the given
+  /// [direction], with the given [type].
+  const ScrollIntent({
+    @required this.direction,
+    this.type = ScrollIncrementType.line,
+  })  : assert(direction != null),
+        assert(type != null);
+
+  /// The direction in which to scroll the scrollable containing the focused
+  /// widget.
+  final AxisDirection direction;
+
+  /// The type of scrolling that is intended.
+  final ScrollIncrementType type;
+}
+
+/// An [Action] that scrolls the [Scrollable] that encloses the current
+/// [primaryFocus] by the amount configured in the [ScrollIntent] given to it.
+///
+/// If [Scrollable.incrementCalculator] is null for the scrollable, the default
+/// for a [ScrollIntent.type] set to [ScrollIncrementType.page] is 80% of the
+/// size of the scroll window, and for [ScrollIncrementType.line], 50 logical
+/// pixels.
+class ScrollAction extends Action<ScrollIntent> {
+  @override
+  bool isEnabled(ScrollIntent intent) {
+    final FocusNode focus = primaryFocus;
+    return focus != null &&
+        focus.context != null &&
+        Scrollable.of(focus.context) != null;
+  }
+
+  // Returns the scroll increment for a single scroll request, for use when
+  // scrolling using a hardware keyboard.
+  //
+  // Must not be called when the position is null, or when any of the position
+  // metrics (pixels, viewportDimension, maxScrollExtent, minScrollExtent) are
+  // null. The type and state arguments must not be null, and the widget must
+  // have already been laid out so that the position fields are valid.
+  double _calculateScrollIncrement(UnionInnerScrollableState state,
+      {ScrollIncrementType type = ScrollIncrementType.line}) {
+    assert(type != null);
+    assert(state.position != null);
+    assert(state.position.pixels != null);
+    assert(state.position.viewportDimension != null);
+    assert(state.position.maxScrollExtent != null);
+    assert(state.position.minScrollExtent != null);
+    assert(state._physics == null ||
+        state._physics.shouldAcceptUserOffset(state.position));
+    if (state.widget.incrementCalculator != null) {
+      return state.widget.incrementCalculator(
+        ScrollIncrementDetails(
+          type: type,
+          metrics: state.position,
+        ),
+      );
+    }
+    switch (type) {
+      case ScrollIncrementType.line:
+        return 50.0;
+      case ScrollIncrementType.page:
+        return 0.8 * state.position.viewportDimension;
+    }
+    return 0.0;
+  }
+
+  // Find out how much of an increment to move by, taking the different
+  // directions into account.
+  double _getIncrement(UnionInnerScrollableState state, ScrollIntent intent) {
+    final double increment =
+        _calculateScrollIncrement(state, type: intent.type);
+    switch (intent.direction) {
+      case AxisDirection.down:
+        switch (state.axisDirection) {
+          case AxisDirection.up:
+            return -increment;
+            break;
+          case AxisDirection.down:
+            return increment;
+            break;
+          case AxisDirection.right:
+          case AxisDirection.left:
+            return 0.0;
+        }
+        break;
+      case AxisDirection.up:
+        switch (state.axisDirection) {
+          case AxisDirection.up:
+            return increment;
+            break;
+          case AxisDirection.down:
+            return -increment;
+            break;
+          case AxisDirection.right:
+          case AxisDirection.left:
+            return 0.0;
+        }
+        break;
+      case AxisDirection.left:
+        switch (state.axisDirection) {
+          case AxisDirection.right:
+            return -increment;
+            break;
+          case AxisDirection.left:
+            return increment;
+            break;
+          case AxisDirection.up:
+          case AxisDirection.down:
+            return 0.0;
+        }
+        break;
+      case AxisDirection.right:
+        switch (state.axisDirection) {
+          case AxisDirection.right:
+            return increment;
+            break;
+          case AxisDirection.left:
+            return -increment;
+            break;
+          case AxisDirection.up:
+          case AxisDirection.down:
+            return 0.0;
+        }
+        break;
+    }
+    return 0.0;
+  }
+
+  @override
+  void invoke(ScrollIntent intent) {
+    final UnionInnerScrollableState state =
+        UnionInnerScrollable.of(primaryFocus.context);
+    assert(state != null,
+        '$ScrollAction was invoked on a context that has no scrollable parent');
+    assert(state.position.pixels != null,
+        'Scrollable must be laid out before it can be scrolled via a ScrollAction');
+    assert(state.position.viewportDimension != null);
+    assert(state.position.maxScrollExtent != null);
+    assert(state.position.minScrollExtent != null);
+
+    // Don't do anything if the user isn't allowed to scroll.
+    if (state._physics != null &&
+        !state._physics.shouldAcceptUserOffset(state.position)) {
+      return;
+    }
+    final double increment = _getIncrement(state, intent);
+    if (increment == 0.0) {
+      return;
+    }
+    state.position.moveTo(
+      state.position.pixels + increment,
+      duration: const Duration(milliseconds: 100),
+      curve: Curves.easeInOut,
+    );
+  }
+}
+
+// Not using a RestorableDouble because we want to allow null values and override
+// [enabled].
+class _RestorableScrollOffset extends RestorableValue<double> {
+  @override
+  double createDefaultValue() => null;
+
+  @override
+  void didUpdateValue(double oldValue) {
+    notifyListeners();
+  }
+
+  @override
+  double fromPrimitives(Object data) {
+    return data as double;
+  }
+
+  @override
+  Object toPrimitives() {
+    return value;
+  }
+
+  @override
+  bool get enabled => value != null;
 }

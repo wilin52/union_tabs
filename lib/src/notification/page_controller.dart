@@ -1,4 +1,3 @@
-
 import 'package:flutter/widgets.dart';
 
 import 'scroll_position.dart';
@@ -61,15 +60,15 @@ class UnionPageController extends ScrollController {
   /// prior to accessing [page].
   double get page {
     assert(
-    positions.isNotEmpty,
-    'UnionPageController.page cannot be accessed before a UnionPageView is built with it.',
+      positions.isNotEmpty,
+      'UnionPageController.page cannot be accessed before a UnionPageView is built with it.',
     );
     assert(
-    positions.length == 1,
-    'The page property cannot be read when multiple PageViews are attached to '
-        'the same UnionPageController.',
+      positions.length == 1,
+      'The page property cannot be read when multiple PageViews are attached to '
+      'the same UnionPageController.',
     );
-    final PagePosition position = this.position;
+    final PagePosition position = this.position as PagePosition;
     return position.page;
   }
 
@@ -80,11 +79,11 @@ class UnionPageController extends ScrollController {
   ///
   /// The `duration` and `curve` arguments must not be null.
   Future<void> animateToPage(
-      int page, {
-        @required Duration duration,
-        @required Curve curve,
-      }) {
-    final PagePosition position = this.position;
+    int page, {
+    @required Duration duration,
+    @required Curve curve,
+  }) {
+    final PagePosition position = this.position as PagePosition;
     return position.animateTo(
       position.getPixelsFromPage(page.toDouble()),
       duration: duration,
@@ -97,7 +96,7 @@ class UnionPageController extends ScrollController {
   /// Jumps the page position from its current value to the given value,
   /// without animation, and without checking if the new value is in range.
   void jumpToPage(int page) {
-    final PagePosition position = this.position;
+    final PagePosition position = this.position as PagePosition;
     position.jumpTo(position.getPixelsFromPage(page.toDouble()));
   }
 
@@ -138,7 +137,7 @@ class UnionPageController extends ScrollController {
   @override
   void attach(ScrollPosition position) {
     super.attach(position);
-    final PagePosition pagePosition = position;
+    final PagePosition pagePosition = position as PagePosition;
     pagePosition.viewportFraction = viewportFraction;
   }
 }

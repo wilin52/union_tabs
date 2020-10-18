@@ -11,9 +11,27 @@ import 'union_tabs_provider.dart';
 // to plumb in the factory for _UnionPagePosition, but it will end up accumulating
 // a large list of scroll positions. As long as you don't try to actually
 // control the scroll positions, everything should be fine.
-final UnionPageController _defaultPageController =
-    UnionPageController();
+final UnionPageController _defaultPageController = UnionPageController();
 const UnionPageScrollPhysics _kPagePhysics = UnionPageScrollPhysics();
+
+class _ForceImplicitScrollPhysics extends ScrollPhysics {
+  const _ForceImplicitScrollPhysics({
+    @required this.allowImplicitScrolling,
+    ScrollPhysics parent,
+  }) : assert(allowImplicitScrolling != null),
+        super(parent: parent);
+
+  @override
+  _ForceImplicitScrollPhysics applyTo(ScrollPhysics ancestor) {
+    return _ForceImplicitScrollPhysics(
+      allowImplicitScrolling: allowImplicitScrolling,
+      parent: buildParent(ancestor),
+    );
+  }
+
+  @override
+  final bool allowImplicitScrolling;
+}
 
 /// A scrollable list that works page by page.
 ///
@@ -47,6 +65,13 @@ class UnionInnerPageView extends StatefulWidget {
   /// children because constructing the [List] requires doing work for every
   /// child that could possibly be displayed in the page view, instead of just
   /// those children that are actually visible.
+  ///
+  /// {@template flutter.widgets.pageView.allowImplicitScrolling}
+  /// The [allowImplicitScrolling] parameter must not be null. If true, the
+  /// [PageView] will participate in accessibility scrolling more like a
+  /// [ListView], where implicit scroll actions will move to the next page
+  /// rather than into the contents of the [PageView].
+  /// {@endtemplate}
   UnionInnerPageView({
     Key key,
     this.scrollDirection = Axis.horizontal,
@@ -57,7 +82,12 @@ class UnionInnerPageView extends StatefulWidget {
     this.onPageChanged,
     List<Widget> children = const <Widget>[],
     this.dragStartBehavior = DragStartBehavior.start,
-  })  : controller = controller ?? _defaultPageController,
+    this.allowImplicitScrolling = false,
+    this.restorationId,
+    this.clipBehavior = Clip.hardEdge,
+  })  : assert(allowImplicitScrolling != null),
+        assert(clipBehavior != null),
+        controller = controller ?? _defaultPageController,
         childrenDelegate = SliverChildListDelegate(children),
         super(key: key);
 
@@ -88,7 +118,12 @@ class UnionInnerPageView extends StatefulWidget {
     @required IndexedWidgetBuilder itemBuilder,
     int itemCount,
     this.dragStartBehavior = DragStartBehavior.start,
-  })  : controller = controller ?? _defaultPageController,
+    this.allowImplicitScrolling = false,
+    this.restorationId,
+    this.clipBehavior = Clip.hardEdge,
+  })  : assert(allowImplicitScrolling != null),
+        assert(clipBehavior != null),
+        controller = controller ?? _defaultPageController,
         childrenDelegate =
             SliverChildBuilderDelegate(itemBuilder, childCount: itemCount),
         super(key: key);
@@ -183,9 +218,30 @@ class UnionInnerPageView extends StatefulWidget {
     this.onPageChanged,
     @required this.childrenDelegate,
     this.dragStartBehavior = DragStartBehavior.start,
+    this.allowImplicitScrolling = false,
+    this.restorationId,
+    this.clipBehavior = Clip.hardEdge,
   })  : assert(childrenDelegate != null),
+        assert(allowImplicitScrolling != null),
+        assert(clipBehavior != null),
         controller = controller ?? _defaultPageController,
         super(key: key);
+
+  /// Controls whether the widget's pages will respond to
+  /// [RenderObject.showOnScreen], which will allow for implicit accessibility
+  /// scrolling.
+  ///
+  /// With this flag set to false, when accessibility focus reaches the end of
+  /// the current page and the user attempts to move it to the next element, the
+  /// focus will traverse to the next widget outside of the page view.
+  ///
+  /// With this flag set to true, when accessibility focus reaches the end of
+  /// the current page and user attempts to move it to the next element, focus
+  /// will traverse to the next page in the page view.
+  final bool allowImplicitScrolling;
+
+  /// {@macro flutter.widgets.scrollable.restorationId}
+  final String restorationId;
 
   /// The axis along which the page view scrolls.
   ///
@@ -238,6 +294,11 @@ class UnionInnerPageView extends StatefulWidget {
   /// {@macro flutter.widgets.scrollable.dragStartBehavior}
   final DragStartBehavior dragStartBehavior;
 
+  /// {@macro flutter.widgets.Clip}
+  ///
+  /// Defaults to [Clip.hardEdge].
+  final Clip clipBehavior;
+
   @override
   _UnionInnerPageViewState createState() => _UnionInnerPageViewState();
 }
@@ -270,54 +331,60 @@ class _UnionInnerPageViewState extends State<UnionInnerPageView> {
   @override
   Widget build(BuildContext context) {
     final AxisDirection axisDirection = _getDirection(context);
-    final ScrollPhysics physics = widget.pageSnapping
+    final ScrollPhysics physics = _ForceImplicitScrollPhysics(
+      allowImplicitScrolling: widget.allowImplicitScrolling,
+    ).applyTo(widget.pageSnapping
         ? _kPagePhysics.applyTo(widget.physics)
-        : widget.physics;
+        : widget.physics);
 
-    return TabBarOverScrollStateProvider(
-      builder: (context) {
-        return NotificationListener<ScrollNotification>(
-          onNotification: (ScrollNotification notification) {
-            if (notification.depth == 0 &&
-                widget.onPageChanged != null &&
-                notification is ScrollUpdateNotification) {
-              final PageMetrics metrics = notification.metrics;
-              final int currentPage = metrics.page.round();
-              if (currentPage != _lastReportedPage) {
-                _lastReportedPage = currentPage;
-                widget.onPageChanged(currentPage);
-              }
-            } else if (notification is OverscrollNotification) {
-              TabBarOverScrollStateProvider.of(notification.context)
-                  ?.setOverScroll(true);
-            } else if (notification is ScrollEndNotification) {
-              TabBarOverScrollStateProvider.of(notification.context)
-                  ?.setOverScroll(false);
+    return TabBarOverScrollStateProvider(builder: (context) {
+      return NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification notification) {
+          if (notification.depth == 0 &&
+              widget.onPageChanged != null &&
+              notification is ScrollUpdateNotification) {
+            final PageMetrics metrics = notification.metrics as PageMetrics;
+            final int currentPage = metrics.page.round();
+            if (currentPage != _lastReportedPage) {
+              _lastReportedPage = currentPage;
+              widget.onPageChanged(currentPage);
             }
-            return false;
+          } else if (notification is OverscrollNotification) {
+            TabBarOverScrollStateProvider.of(notification.context)
+                ?.setOverScroll(true);
+          } else if (notification is ScrollEndNotification) {
+            TabBarOverScrollStateProvider.of(notification.context)
+                ?.setOverScroll(false);
+          }
+          return false;
+        },
+        child: UnionInnerScrollable(
+          dragStartBehavior: widget.dragStartBehavior,
+          axisDirection: axisDirection,
+          controller: widget.controller,
+          physics: physics,
+          restorationId: widget.restorationId,
+          viewportBuilder: (BuildContext context, ViewportOffset position) {
+            return Viewport(
+              // TODO(dnfield): we should provide a way to set cacheExtent
+              // independent of implicit scrolling:
+              // https://github.com/flutter/flutter/issues/45632
+              cacheExtent: widget.allowImplicitScrolling ? 1.0 : 0.0,
+              cacheExtentStyle: CacheExtentStyle.viewport,
+              axisDirection: axisDirection,
+              offset: position,
+              clipBehavior: widget.clipBehavior,
+              slivers: <Widget>[
+                SliverFillViewport(
+                  viewportFraction: widget.controller.viewportFraction,
+                  delegate: widget.childrenDelegate,
+                ),
+              ],
+            );
           },
-          child: UnionInnerScrollable(
-            dragStartBehavior: widget.dragStartBehavior,
-            axisDirection: axisDirection,
-            controller: widget.controller,
-            physics: physics,
-            viewportBuilder: (BuildContext context, ViewportOffset position) {
-              return Viewport(
-                cacheExtent: 0.0,
-                axisDirection: axisDirection,
-                offset: position,
-                slivers: <Widget>[
-                  SliverFillViewport(
-                    viewportFraction: widget.controller.viewportFraction,
-                    delegate: widget.childrenDelegate,
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    );
+        ),
+      );
+    });
   }
 
   @override
@@ -335,5 +402,8 @@ class _UnionInnerPageViewState extends State<UnionInnerPageView> {
         showName: false));
     description.add(FlagProperty('pageSnapping',
         value: widget.pageSnapping, ifFalse: 'snapping disabled'));
+    description.add(FlagProperty('allowImplicitScrolling',
+        value: widget.allowImplicitScrolling,
+        ifTrue: 'allow implicit scrolling'));
   }
 }

@@ -4,26 +4,25 @@ import 'scroll_position.dart';
 
 class UnionPageScrollPhysics extends ScrollPhysics {
   /// Creates physics for a [UnionInnerPageView].
-  const UnionPageScrollPhysics({ScrollPhysics parent})
-      : super(parent: parent);
+  const UnionPageScrollPhysics({ScrollPhysics parent}) : super(parent: parent);
 
   @override
   UnionPageScrollPhysics applyTo(ScrollPhysics ancestor) {
     return UnionPageScrollPhysics(parent: buildParent(ancestor));
   }
 
-  double _getPage(ScrollPosition position) {
+  double _getPage(ScrollMetrics position) {
     if (position is PagePosition) return position.page;
     return position.pixels / position.viewportDimension;
   }
 
-  double _getPixels(ScrollPosition position, double page) {
+  double _getPixels(ScrollMetrics position, double page) {
     if (position is PagePosition) return position.getPixelsFromPage(page);
     return page * position.viewportDimension;
   }
 
   double _getTargetPixels(
-      ScrollPosition position, Tolerance tolerance, double velocity) {
+      ScrollMetrics position, Tolerance tolerance, double velocity) {
     double page = _getPage(position);
     if (velocity < -tolerance.velocity)
       page -= 0.5;

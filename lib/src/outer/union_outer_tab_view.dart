@@ -62,9 +62,6 @@ class UnionOuterTabBarView extends StatefulWidget {
   _UnionOuterTabBarViewState createState() => _UnionOuterTabBarViewState();
 }
 
-final PageScrollPhysics _kTabBarViewPhysics =
-    const PageScrollPhysics().applyTo(const ClampingScrollPhysics());
-
 class _UnionOuterTabBarViewState extends State<UnionOuterTabBarView> {
   TabController _controller;
   UnionOuterPageController _pageController;
@@ -168,9 +165,13 @@ class _UnionOuterTabBarViewState extends State<UnionOuterTabBarView> {
       return Future<void>.value();
 
     final int previousIndex = _controller.previousIndex;
-    if ((_currentIndex - previousIndex).abs() == 1)
-      return _pageController.animateToPage(_currentIndex,
+    if ((_currentIndex - previousIndex).abs() == 1) {
+      _warpUnderwayCount += 1;
+      await _pageController.animateToPage(_currentIndex,
           duration: kTabScrollDuration, curve: Curves.ease);
+      _warpUnderwayCount -= 1;
+      return Future<void>.value();
+    }
 
     assert((_currentIndex - previousIndex).abs() > 1);
     final int initialPage =
@@ -213,10 +214,13 @@ class _UnionOuterTabBarViewState extends State<UnionOuterTabBarView> {
         _currentIndex = _controller.index;
       }
       _controller.offset =
-          (_pageController.page - _controller.index).clamp(-1.0, 1.0);
+          (_pageController.page - _controller.index).clamp(-1.0, 1.0) as double;
     } else if (notification is ScrollEndNotification) {
       _controller.index = _pageController.page.round();
       _currentIndex = _controller.index;
+      if (!_controller.indexIsChanging)
+        _controller.offset = (_pageController.page - _controller.index)
+            .clamp(-1.0, 1.0) as double;
     }
     _warpUnderwayCount -= 1;
 
@@ -228,8 +232,8 @@ class _UnionOuterTabBarViewState extends State<UnionOuterTabBarView> {
     assert(() {
       if (_controller.length != widget.children.length) {
         throw FlutterError(
-            'Controller\'s length property (${_controller.length}) does not match the \n'
-            'number of tabs (${widget.children.length}) present in TabBar\'s tabs property.');
+            "Controller's length property (${_controller.length}) does not match the "
+            "number of tabs (${widget.children.length}) present in TabBar's tabs property.");
       }
       return true;
     }());
@@ -244,8 +248,8 @@ class _UnionOuterTabBarViewState extends State<UnionOuterTabBarView> {
           dragStartBehavior: widget.dragStartBehavior,
           controller: _pageController,
           physics: widget.physics == null
-              ? _kTabBarViewPhysics
-              : _kTabBarViewPhysics.applyTo(widget.physics),
+              ? const PageScrollPhysics().applyTo(const ClampingScrollPhysics())
+              : const PageScrollPhysics().applyTo(widget.physics),
           children: _childrenWithKey,
         ),
       ),
