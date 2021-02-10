@@ -53,8 +53,7 @@ class UnionOuterGestureDelegate {
         if (index < 0) index = 0;
         if (index >= tabController.length) index = tabController.length - 1;
 
-        tabController.animateTo(tabController.index + offset,
-            duration: Duration(milliseconds: 500));
+        tabController.animateTo(index, duration: Duration(milliseconds: 500));
       }
     } else if (notification is UnionScrollUpdateNotification) {
       if (_drag != null && notification.dragDetails != null) {
